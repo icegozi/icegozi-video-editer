@@ -42,6 +42,6 @@ Thumbs.db
 *.sublime-workspace
 
 # Local AI agent configuration
-.agents/
-.claude/
-.agent/
+.agents/*
+.claude/*
+.agent/*
