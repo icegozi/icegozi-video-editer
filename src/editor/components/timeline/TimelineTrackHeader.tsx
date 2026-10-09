@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Eye, EyeOff, Lock, Unlock, Volume2, VolumeX } from 'lucide-react';
 import { IconButton } from '../ui/IconButton';
 
@@ -7,6 +7,12 @@ export interface TimelineTrackHeaderProps {
   name: string;
   type: 'video' | 'audio';
   height?: number;
+  visible?: boolean;
+  muted?: boolean;
+  locked?: boolean;
+  onToggleVisible?: () => void;
+  onToggleMuted?: () => void;
+  onToggleLocked?: () => void;
 }
 
 export const TimelineTrackHeader: React.FC<TimelineTrackHeaderProps> = ({
@@ -14,11 +20,13 @@ export const TimelineTrackHeader: React.FC<TimelineTrackHeaderProps> = ({
   name,
   type,
   height = 52,
+  visible = true,
+  muted = false,
+  locked = false,
+  onToggleVisible,
+  onToggleMuted,
+  onToggleLocked,
 }) => {
-  const [visible, setVisible] = useState(true);
-  const [locked, setLocked] = useState(false);
-  const [muted, setMuted] = useState(false);
-
   return (
     <div
       style={{
@@ -70,7 +78,7 @@ export const TimelineTrackHeader: React.FC<TimelineTrackHeaderProps> = ({
             icon={visible ? <Eye size={12} /> : <EyeOff size={12} />}
             label={visible ? 'Hide Track' : 'Show Track'}
             size="sm"
-            onClick={() => setVisible(!visible)}
+            onClick={onToggleVisible}
             style={{ width: '22px', height: '22px', opacity: visible ? 0.7 : 0.4 }}
           />
         ) : (
@@ -78,7 +86,7 @@ export const TimelineTrackHeader: React.FC<TimelineTrackHeaderProps> = ({
             icon={muted ? <VolumeX size={12} /> : <Volume2 size={12} />}
             label={muted ? 'Unmute Track' : 'Mute Track'}
             size="sm"
-            onClick={() => setMuted(!muted)}
+            onClick={onToggleMuted}
             style={{ width: '22px', height: '22px', opacity: muted ? 0.4 : 0.7 }}
           />
         )}
@@ -87,7 +95,7 @@ export const TimelineTrackHeader: React.FC<TimelineTrackHeaderProps> = ({
           icon={locked ? <Lock size={12} /> : <Unlock size={12} />}
           label={locked ? 'Unlock Track' : 'Lock Track'}
           size="sm"
-          onClick={() => setLocked(!locked)}
+          onClick={onToggleLocked}
           style={{ width: '22px', height: '22px', opacity: locked ? 1 : 0.4 }}
         />
       </div>

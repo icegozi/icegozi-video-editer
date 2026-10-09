@@ -4,16 +4,22 @@ import { AudioTrackConfig } from '../../../domain/video/AudioTrack';
 
 export interface AudioLayerProps {
   track: AudioTrackConfig;
+  muted?: boolean;
 }
 
 /**
  * Independent audio layer component.
  * Supports start offset, duration trimming, volume envelope, and frame-based fade in/out.
  */
-export const AudioLayer: React.FC<AudioLayerProps> = ({ track }) => {
+export const AudioLayer: React.FC<AudioLayerProps> = ({ track, muted = false }) => {
+  if (muted) {
+    return null;
+  }
+
   const resolvedSrc = track.src.startsWith('http') || track.src.startsWith('/')
     ? track.src
     : staticFile(track.src);
+
 
   const duration = track.durationInFrames;
   const fadeIn = track.fadeInFrames || 0;

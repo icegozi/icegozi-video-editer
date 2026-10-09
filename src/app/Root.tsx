@@ -4,6 +4,9 @@ import { MainVideo } from '../video/compositions/MainVideo/MainVideo';
 import { MAIN_VIDEO_COMPOSITION } from './compositions';
 import { registerBuiltInScenes } from './registerCompositions';
 
+import { buildTimeline } from '../application/timeline/buildTimeline';
+import { migrateProject } from '../schemas/project.schema';
+
 // Ensure built-in scene components are registered in SceneRegistry
 registerBuiltInScenes();
 
@@ -18,7 +21,19 @@ export const Root: React.FC = () => {
         width={MAIN_VIDEO_COMPOSITION.width}
         height={MAIN_VIDEO_COMPOSITION.height}
         defaultProps={MAIN_VIDEO_COMPOSITION.defaultProps}
+        calculateMetadata={({ props }) => {
+          const rawProject = props?.project ?? MAIN_VIDEO_COMPOSITION.defaultProps.project;
+          const project = migrateProject(rawProject);
+          const timeline = buildTimeline(project);
+          return {
+            durationInFrames: Math.max(1, timeline.totalDurationInFrames),
+            fps: project.fps,
+            width: project.width,
+            height: project.height,
+          };
+        }}
       />
     </>
   );
 };
+

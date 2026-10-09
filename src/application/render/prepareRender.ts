@@ -14,7 +14,7 @@ export function prepareRender(compositionId: string, profile: RenderProfile = Re
   const targetDir = profile === RenderProfile.Preview ? PATHS.previews : PATHS.output;
   const filename = `${compositionId}_${profile}.mp4`;
   const outputPath = path.resolve(targetDir, filename);
-  const entryFile = path.resolve(PATHS.root, 'src', 'app', 'Root.tsx');
+  const entryFile = path.resolve(PATHS.root, 'src', 'index.ts');
 
   return {
     compositionId,

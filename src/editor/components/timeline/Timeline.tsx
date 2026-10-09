@@ -9,7 +9,7 @@ import { TimelinePlayhead } from './TimelinePlayhead';
 import { framesToPixels } from '../../geometry/timelineGeometry';
 
 export const Timeline: React.FC = () => {
-  const { state } = useEditor();
+  const { state, dispatch } = useEditor();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const { fps } = state.project;
@@ -20,8 +20,6 @@ export const Timeline: React.FC = () => {
   const totalWidthPx = Math.max(1200, framesToPixels(totalFrames, fps, pps) + 300);
 
   // Divide scenes into V2 (Text & Formula overlays) and V1 (Primary video, images, or base scenes)
-  // In our sequential model, all scenes are in computedScenes.
-  // We can render text & formula on V2 or V1 according to type:
   const v2Scenes = state.timeline.computedScenes.filter(
     (cs) => cs.scene.type === 'text' || cs.scene.type === 'formula'
   );
@@ -29,12 +27,15 @@ export const Timeline: React.FC = () => {
     (cs) => cs.scene.type !== 'text' && cs.scene.type !== 'formula'
   );
 
-  // If there are no v1 scenes (like in math beauty demo where all scenes are text/formula),
-  // we render them on V1 if V2 would be empty or split logically.
   const primaryScenes = v1Scenes.length > 0 ? v1Scenes : state.timeline.computedScenes;
   const overlayScenes = v1Scenes.length > 0 ? v2Scenes : [];
 
-  const tracksHeight = 52 * 4; // 4 tracks * 52px = 208px
+  const audioTracks = state.project.audioTracks ?? [];
+  const tracksCount = 2 + Math.max(1, audioTracks.length);
+  const tracksHeight = tracksCount * 52;
+
+  const v1Setting = state.project.trackSettings?.['V1'];
+  const v2Setting = state.project.trackSettings?.['V2'];
 
   return (
     <div
@@ -90,11 +91,80 @@ export const Timeline: React.FC = () => {
             Tracks
           </div>
 
-          {/* Track Headers */}
-          <TimelineTrackHeader label="V2" name="Overlays / Text" type="video" />
-          <TimelineTrackHeader label="V1" name="Primary Video" type="video" />
-          <TimelineTrackHeader label="A1" name="Voice / Audio" type="audio" />
-          <TimelineTrackHeader label="A2" name="BGM / SFX" type="audio" />
+          {/* V2 Header */}
+          <TimelineTrackHeader
+            label="V2"
+            name="Overlays / Text"
+            type="video"
+            visible={!v2Setting?.hidden}
+            locked={Boolean(v2Setting?.locked)}
+            onToggleVisible={() =>
+              dispatch({
+                type: 'SET_TRACK_SETTING',
+                trackId: 'V2',
+                setting: { hidden: !v2Setting?.hidden },
+              })
+            }
+            onToggleLocked={() =>
+              dispatch({
+                type: 'SET_TRACK_SETTING',
+                trackId: 'V2',
+                setting: { locked: !v2Setting?.locked },
+              })
+            }
+          />
+
+          {/* V1 Header */}
+          <TimelineTrackHeader
+            label="V1"
+            name="Primary Video"
+            type="video"
+            visible={!v1Setting?.hidden}
+            locked={Boolean(v1Setting?.locked)}
+            onToggleVisible={() =>
+              dispatch({
+                type: 'SET_TRACK_SETTING',
+                trackId: 'V1',
+                setting: { hidden: !v1Setting?.hidden },
+              })
+            }
+            onToggleLocked={() =>
+              dispatch({
+                type: 'SET_TRACK_SETTING',
+                trackId: 'V1',
+                setting: { locked: !v1Setting?.locked },
+              })
+            }
+          />
+
+          {/* Dynamic Audio Headers for all audio tracks */}
+          {audioTracks.map((track, idx) => {
+            const setting = state.project.trackSettings?.[track.id];
+            return (
+              <TimelineTrackHeader
+                key={track.id}
+                label={`A${idx + 1}`}
+                name={`${track.type.toUpperCase()}: ${track.id}`}
+                type="audio"
+                muted={Boolean(setting?.muted)}
+                locked={Boolean(setting?.locked)}
+                onToggleMuted={() =>
+                  dispatch({
+                    type: 'SET_TRACK_SETTING',
+                    trackId: track.id,
+                    setting: { muted: !setting?.muted },
+                  })
+                }
+                onToggleLocked={() =>
+                  dispatch({
+                    type: 'SET_TRACK_SETTING',
+                    trackId: track.id,
+                    setting: { locked: !setting?.locked },
+                  })
+                }
+              />
+            );
+          })}
         </div>
 
         {/* Right Scrollable Content (Ruler + Lanes + Playhead) */}
@@ -115,77 +185,77 @@ export const Timeline: React.FC = () => {
           <div style={{ position: 'relative', width: `${totalWidthPx}px` }}>
             {/* V2 Lane: Overlays */}
             <TimelineTrack totalWidthPx={totalWidthPx}>
-              {overlayScenes.map((cs) => (
-                <TimelineClip
-                  key={cs.scene.id}
-                  scene={cs.scene}
-                  startFrame={cs.startFrame}
-                  durationInFrames={cs.durationInFrames}
-                />
-              ))}
+              {!v2Setting?.hidden &&
+                overlayScenes.map((cs) => (
+                  <TimelineClip
+                    key={cs.scene.id}
+                    scene={cs.scene}
+                    startFrame={cs.startFrame}
+                    durationInFrames={cs.durationInFrames}
+                  />
+                ))}
             </TimelineTrack>
 
             {/* V1 Lane: Primary Scenes */}
             <TimelineTrack totalWidthPx={totalWidthPx}>
-              {primaryScenes.map((cs) => (
-                <TimelineClip
-                  key={cs.scene.id}
-                  scene={cs.scene}
-                  startFrame={cs.startFrame}
-                  durationInFrames={cs.durationInFrames}
-                />
-              ))}
+              {!v1Setting?.hidden &&
+                primaryScenes.map((cs) => (
+                  <TimelineClip
+                    key={cs.scene.id}
+                    scene={cs.scene}
+                    startFrame={cs.startFrame}
+                    durationInFrames={cs.durationInFrames}
+                  />
+                ))}
             </TimelineTrack>
 
-            {/* A1 Lane: Audio 1 */}
-            <TimelineTrack totalWidthPx={totalWidthPx}>
-              {state.project.audioTracks && state.project.audioTracks[0] && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: '0px',
-                    width: `${framesToPixels(totalFrames, fps, pps)}px`,
-                    top: '8px',
-                    bottom: '8px',
-                    borderRadius: '4px',
-                    backgroundColor: 'rgba(53, 199, 138, 0.2)',
-                    border: '1px solid rgba(53, 199, 138, 0.5)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '0 8px',
-                    fontSize: '11px',
-                    color: '#6EE7B7',
-                  }}
-                >
-                  {state.project.audioTracks[0].id}
-                </div>
-              )}
-            </TimelineTrack>
+            {/* Audio Lanes for every track in audioTracks */}
+            {audioTracks.map((track) => {
+              const leftPx = framesToPixels(track.startFrame, fps, pps);
+              const durationFrames =
+                track.durationInFrames ?? Math.max(0, totalFrames - track.startFrame);
+              const widthPx = Math.max(20, framesToPixels(durationFrames, fps, pps));
+              const isSelected = state.selectedClipId === track.id;
+              const isMuted = Boolean(state.project.trackSettings?.[track.id]?.muted);
 
-            {/* A2 Lane: Audio 2 */}
-            <TimelineTrack totalWidthPx={totalWidthPx}>
-              {state.project.audioTracks && state.project.audioTracks[1] && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: '0px',
-                    width: `${framesToPixels(totalFrames, fps, pps)}px`,
-                    top: '8px',
-                    bottom: '8px',
-                    borderRadius: '4px',
-                    backgroundColor: 'rgba(53, 199, 138, 0.15)',
-                    border: '1px solid rgba(53, 199, 138, 0.4)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '0 8px',
-                    fontSize: '11px',
-                    color: '#6EE7B7',
-                  }}
-                >
-                  {state.project.audioTracks[1].id}
-                </div>
-              )}
-            </TimelineTrack>
+              return (
+                <TimelineTrack key={track.id} totalWidthPx={totalWidthPx}>
+                  <div
+                    onClick={() => dispatch({ type: 'SET_SELECTED_CLIP', clipId: track.id })}
+                    style={{
+                      position: 'absolute',
+                      left: `${leftPx}px`,
+                      width: `${widthPx}px`,
+                      top: '8px',
+                      bottom: '8px',
+                      borderRadius: '4px',
+                      backgroundColor: isSelected
+                        ? 'rgba(53, 199, 138, 0.45)'
+                        : isMuted
+                        ? 'rgba(100, 116, 139, 0.25)'
+                        : 'rgba(53, 199, 138, 0.2)',
+                      border: isSelected
+                        ? '2px solid #10B981'
+                        : isMuted
+                        ? '1px dashed #64748B'
+                        : '1px solid rgba(53, 199, 138, 0.5)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '0 8px',
+                      fontSize: '11px',
+                      color: isMuted ? '#94A3B8' : '#6EE7B7',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {track.id} {isMuted ? '(MUTED)' : `(${durationFrames}f)`}
+                  </div>
+                </TimelineTrack>
+              );
+            })}
 
             {/* Playhead Overlay */}
             <TimelinePlayhead timelineHeight={tracksHeight + 28} />

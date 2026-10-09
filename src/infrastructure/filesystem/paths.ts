@@ -6,9 +6,21 @@ import { PATHS } from '../../config/paths.config';
  * Ensures the path does not escape the assets directory.
  */
 export function resolveAssetPath(relativePath: string): string {
-  const normalized = path.normalize(relativePath).replace(/^(\.\.(\/|\\|$))+/, '');
-  return path.resolve(PATHS.publicAssets, normalized);
+  const normalized = relativePath
+    .replace(/\\/g, '/')
+    .replace(/^\/?(public\/)?assets\//, '')
+    .replace(/^\//, '');
+
+  const resolved = path.resolve(PATHS.publicAssets, normalized);
+  const relative = path.relative(PATHS.publicAssets, resolved);
+
+  if (path.isAbsolute(relative) || relative === '..' || relative.startsWith(`..${path.sep}`) || relative.startsWith('../')) {
+    throw new Error(`Asset path escapes public/assets: ${relativePath}`);
+  }
+
+  return resolved;
 }
+
 
 /**
  * Resolves a normalized intermediate file path.

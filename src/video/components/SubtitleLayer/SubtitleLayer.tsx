@@ -1,10 +1,14 @@
 import React from 'react';
 import { useCurrentFrame, useVideoConfig } from 'remotion';
-import type { Caption } from '@remotion/captions';
 import { SafeArea } from '../SafeArea/SafeArea';
+export interface CaptionItem {
+  startMs: number;
+  endMs: number;
+  text: string;
+}
 
 export interface SubtitleLayerProps {
-  captions: Caption[];
+  captions: CaptionItem[];
   style?: React.CSSProperties;
 }
 

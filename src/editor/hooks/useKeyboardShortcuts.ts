@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useEditor } from '../state/editorStore';
+import { ProjectStorage } from '../../infrastructure/storage/ProjectStorage';
 
 export function useKeyboardShortcuts() {
   const { state, dispatch } = useEditor();
@@ -11,11 +12,46 @@ export function useKeyboardShortcuts() {
         target &&
         (target.tagName === 'INPUT' ||
           target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
           target.isContentEditable);
 
-      // Global key combos with Ctrl / Cmd (allowed even inside inputs if relevant)
+      // Handle Escape for closing modal
+      if (e.key === 'Escape') {
+        if (state.isExportModalOpen) {
+          e.preventDefault();
+          dispatch({ type: 'SET_EXPORT_MODAL', open: false });
+          return;
+        }
+      }
+
+      // STRICT FOCUS & IME GUARD:
+      // If typing inside inputs/textareas/select or during IME composition (Vietnamese typing),
+      // DO NOT override browser native undo or typing keys!
+      if (isInput || e.isComposing) {
+        return;
+      }
+
       const isCmdOrCtrl = e.ctrlKey || e.metaKey;
 
+      // Ctrl/Cmd + S: Save project
+      if (isCmdOrCtrl && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        dispatch({ type: 'SET_SAVE_STATUS', status: 'saving' });
+        ProjectStorage.saveProject(state.project, state.revision)
+          .then(() => {
+            dispatch({ type: 'SET_SAVE_STATUS', status: 'saved', savedAt: Date.now() });
+          })
+          .catch((err) => {
+            dispatch({
+              type: 'SET_SAVE_STATUS',
+              status: 'error',
+              error: err instanceof Error ? err.message : 'Save failed',
+            });
+          });
+        return;
+      }
+
+      // Undo / Redo
       if (isCmdOrCtrl && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         if (e.shiftKey) {
@@ -29,11 +65,6 @@ export function useKeyboardShortcuts() {
       if (isCmdOrCtrl && e.key.toLowerCase() === 'y') {
         e.preventDefault();
         dispatch({ type: 'REDO' });
-        return;
-      }
-
-      // STRICT FOCUS GUARD: Skip single-key shortcuts when typing in inputs/textareas
-      if (isInput) {
         return;
       }
 
@@ -76,5 +107,13 @@ export function useKeyboardShortcuts() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [state.selectedClipId, state.currentFrame, state.zoomPixelsPerSecond, state.project.scenes.length, dispatch]);
+  }, [
+    state.selectedClipId,
+    state.currentFrame,
+    state.zoomPixelsPerSecond,
+    state.project,
+    state.revision,
+    state.isExportModalOpen,
+    dispatch,
+  ]);
 }

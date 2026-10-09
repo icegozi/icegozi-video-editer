@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useCurrentFrame, interpolate } from 'remotion';
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
 import { SafeArea } from '../SafeArea/SafeArea';
 
 export interface FormulaOverlayProps {
@@ -12,9 +14,8 @@ export interface FormulaOverlayProps {
 }
 
 /**
- * FormulaOverlay accurately renders mathematical formulas and equations.
- * Designed so mathematical notation can be displayed crisply and deterministically
- * without relying on hallucinated AI images.
+ * FormulaOverlay accurately renders mathematical formulas and equations via KaTeX.
+ * Notation is rendered deterministically without relying on image assets.
  */
 export const FormulaOverlay: React.FC<FormulaOverlayProps> = ({
   latex,
@@ -25,6 +26,18 @@ export const FormulaOverlay: React.FC<FormulaOverlayProps> = ({
   style,
 }) => {
   const frame = useCurrentFrame();
+
+  const renderedHtml = useMemo(() => {
+    try {
+      return katex.renderToString(latex, {
+        displayMode: true,
+        throwOnError: false,
+        trust: false,
+      });
+    } catch (e) {
+      return `<span style="color: #EF4444; font-size: 0.5em;">Formula Error: ${e instanceof Error ? e.message : 'Invalid LaTeX'}</span>`;
+    }
+  }, [latex]);
 
   const opacity = interpolate(frame, [0, 15], [0, 1], {
     extrapolateLeft: 'clamp',
@@ -83,16 +96,12 @@ export const FormulaOverlay: React.FC<FormulaOverlayProps> = ({
         >
           <div
             style={{
-              fontFamily: '"KaTeX_Main", "Cambria Math", "Latin Modern Math", "STIX Two Math", serif',
               fontSize: `${fontSize}px`,
-              fontWeight: 500,
-              letterSpacing: '0.03em',
-              color: '#38BDF8',
-              textShadow: '0 0 30px rgba(56, 189, 248, 0.35)',
+              color: textColor,
+              textShadow: `0 0 30px ${textColor}55`,
             }}
-          >
-            {latex}
-          </div>
+            dangerouslySetInnerHTML={{ __html: renderedHtml }}
+          />
         </div>
 
         {explanation && (

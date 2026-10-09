@@ -1,10 +1,13 @@
 import React, { createContext, useContext, useReducer, useMemo } from 'react';
-import { VideoProject } from '../../domain/video/VideoProject';
+import { VideoProject, SubtitleCue, TrackSetting } from '../../domain/video/VideoProject';
 import { SceneConfig } from '../../domain/video/Scene';
 import { AudioTrackConfig } from '../../domain/video/AudioTrack';
 import { ProjectTimeline } from '../../domain/video/Timeline';
 import { buildTimeline } from '../../application/timeline/buildTimeline';
 import { demoProject } from '../../../projects/demo/project';
+import { generateId } from '../../shared/utils/id';
+
+export type PersistenceStatus = 'saved' | 'dirty' | 'saving' | 'error';
 
 export interface EditorState {
   project: VideoProject;
@@ -17,6 +20,10 @@ export interface EditorState {
   activeTool: 'select' | 'split';
   isSafeAreasVisible: boolean;
   isExportModalOpen: boolean;
+  revision: number;
+  saveStatus: PersistenceStatus;
+  lastSavedAt: number | null;
+  saveError: string | null;
   historyPast: VideoProject[];
   historyFuture: VideoProject[];
 }
@@ -31,15 +38,49 @@ export type EditorAction =
   | { type: 'SET_ACTIVE_TOOL'; tool: 'select' | 'split' }
   | { type: 'TOGGLE_SAFE_AREAS' }
   | { type: 'SET_EXPORT_MODAL'; open: boolean }
+  | { type: 'ADD_SCENE'; scene: SceneConfig }
   | { type: 'UPDATE_SCENE'; sceneId: string; updates: Partial<SceneConfig> }
   | { type: 'DELETE_SCENE'; sceneId: string }
-  | { type: 'SPLIT_SCENE'; sceneId: string; atFrame: number }
+  | { type: 'SPLIT_SCENE'; sceneId: string; atFrame: number; newSceneId?: string }
+  | { type: 'DUPLICATE_SCENE'; sceneId: string; newSceneId?: string }
+  | { type: 'ADD_AUDIO_TRACK'; track: AudioTrackConfig }
   | { type: 'UPDATE_AUDIO_TRACK'; trackId: string; updates: Partial<AudioTrackConfig> }
+  | { type: 'DELETE_AUDIO_TRACK'; trackId: string }
+  | { type: 'SET_TRACK_SETTING'; trackId: string; setting: Partial<TrackSetting> }
+  | { type: 'SET_SUBTITLES'; subtitles: SubtitleCue[] }
   | { type: 'UPDATE_PROJECT_METADATA'; updates: Partial<VideoProject> }
+  | { type: 'LOAD_PROJECT'; project: VideoProject; revision?: number }
+  | { type: 'RESET_PROJECT'; project?: VideoProject }
+  | { type: 'SET_SAVE_STATUS'; status: PersistenceStatus; error?: string; savedAt?: number }
   | { type: 'UNDO' }
   | { type: 'REDO' };
 
-function createInitialState(initialProject: VideoProject = demoProject): EditorState {
+export function reconcileTimelineState(
+  currentFrame: number,
+  selectedClipId: string | null,
+  project: VideoProject,
+  timeline: ProjectTimeline
+) {
+  const maxFrame = Math.max(0, timeline.totalDurationInFrames - 1);
+  const clampedFrame = Number.isFinite(currentFrame)
+    ? Math.max(0, Math.min(maxFrame, Math.round(currentFrame)))
+    : 0;
+
+  const isSceneValid = project.scenes.some((s) => s.id === selectedClipId);
+  const isAudioValid = project.audioTracks?.some((a) => a.id === selectedClipId) ?? false;
+  const isSubtitleValid = project.subtitles?.some((sub) => sub.id === selectedClipId) ?? false;
+
+  const reconciledSelection = (isSceneValid || isAudioValid || isSubtitleValid)
+    ? selectedClipId
+    : project.scenes[0]?.id ?? null;
+
+  return {
+    currentFrame: clampedFrame,
+    selectedClipId: reconciledSelection,
+  };
+}
+
+export function createInitialState(initialProject: VideoProject = demoProject): EditorState {
   const timeline = buildTimeline(initialProject);
   return {
     project: initialProject,
@@ -47,31 +88,50 @@ function createInitialState(initialProject: VideoProject = demoProject): EditorS
     currentFrame: 0,
     isPlaying: false,
     selectedClipId: initialProject.scenes[0]?.id || null,
-    zoomPixelsPerSecond: 120, // 120px per second default
+    zoomPixelsPerSecond: 120,
     snappingEnabled: true,
     activeTool: 'select',
     isSafeAreasVisible: false,
     isExportModalOpen: false,
+    revision: 1,
+    saveStatus: 'saved',
+    lastSavedAt: Date.now(),
+    saveError: null,
     historyPast: [],
     historyFuture: [],
   };
 }
 
-function pushHistory(state: EditorState, newProject: VideoProject): EditorState {
+export function pushHistory(state: EditorState, newProject: VideoProject): EditorState {
   const newTimeline = buildTimeline(newProject);
+  const reconciled = reconcileTimelineState(
+    state.currentFrame,
+    state.selectedClipId,
+    newProject,
+    newTimeline
+  );
+
   return {
     ...state,
     project: newProject,
     timeline: newTimeline,
-    historyPast: [...state.historyPast.slice(-20), state.project], // keep max 20 history states
+    currentFrame: reconciled.currentFrame,
+    selectedClipId: reconciled.selectedClipId,
+    revision: state.revision + 1,
+    saveStatus: 'dirty',
+    saveError: null,
+    historyPast: [...state.historyPast.slice(-19), state.project], // keep max 20 history states
     historyFuture: [],
   };
 }
 
-function editorReducer(state: EditorState, action: EditorAction): EditorState {
+export function editorReducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
     case 'SET_CURRENT_FRAME': {
-      const clamped = Math.max(0, Math.min(state.timeline.totalDurationInFrames, Math.round(action.frame)));
+      const maxFrame = Math.max(0, state.timeline.totalDurationInFrames - 1);
+      const clamped = Number.isFinite(action.frame)
+        ? Math.max(0, Math.min(maxFrame, Math.round(action.frame)))
+        : 0;
       return { ...state, currentFrame: clamped };
     }
 
@@ -99,6 +159,12 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
     case 'SET_EXPORT_MODAL':
       return { ...state, isExportModalOpen: action.open };
 
+    case 'ADD_SCENE': {
+      const newScenes = [...state.project.scenes, action.scene];
+      const nextState = pushHistory(state, { ...state.project, scenes: newScenes });
+      return { ...nextState, selectedClipId: action.scene.id };
+    }
+
     case 'UPDATE_SCENE': {
       const updatedScenes = state.project.scenes.map((s) =>
         s.id === action.sceneId ? ({ ...s, ...action.updates } as SceneConfig) : s
@@ -109,11 +175,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
     case 'DELETE_SCENE': {
       if (state.project.scenes.length <= 1) return state; // Preserve at least 1 scene
       const filteredScenes = state.project.scenes.filter((s) => s.id !== action.sceneId);
-      const nextSelected = state.selectedClipId === action.sceneId ? filteredScenes[0]?.id || null : state.selectedClipId;
-      return {
-        ...pushHistory(state, { ...state.project, scenes: filteredScenes }),
-        selectedClipId: nextSelected,
-      };
+      return pushHistory(state, { ...state.project, scenes: filteredScenes });
     }
 
     case 'SPLIT_SCENE': {
@@ -133,10 +195,23 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         ...originalScene,
         durationInFrames: offsetInScene,
       };
+
+      // Calculate consumed source frames for video to prevent repeating source in part 2
+      const consumedSourceFrames = originalScene.type === 'video'
+        ? Math.round(offsetInScene * (originalScene.playbackRate ?? 1))
+        : 0;
+
+      const newId = action.newSceneId ?? `${originalScene.id}_split_${generateId('part')}`;
+
       const scenePart2: SceneConfig = {
         ...originalScene,
-        id: `${originalScene.id}_split_${Date.now().toString().slice(-4)}`,
+        id: newId,
         durationInFrames: originalScene.durationInFrames - offsetInScene,
+        ...(originalScene.type === 'video'
+          ? {
+              startFromFrame: (originalScene.startFromFrame ?? 0) + consumedSourceFrames,
+            }
+          : {}),
       };
 
       const newScenes = [
@@ -146,10 +221,37 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         ...state.project.scenes.slice(sceneIndex + 1),
       ];
 
+      const nextState = pushHistory(state, { ...state.project, scenes: newScenes });
       return {
-        ...pushHistory(state, { ...state.project, scenes: newScenes }),
+        ...nextState,
         selectedClipId: scenePart2.id,
       };
+    }
+
+    case 'DUPLICATE_SCENE': {
+      const scene = state.project.scenes.find((s) => s.id === action.sceneId);
+      if (!scene) return state;
+
+      const newId = action.newSceneId ?? `${scene.id}_copy_${generateId('dup')}`;
+      const duplicated: SceneConfig = {
+        ...scene,
+        id: newId,
+      };
+
+      const sceneIndex = state.project.scenes.findIndex((s) => s.id === action.sceneId);
+      const newScenes = [
+        ...state.project.scenes.slice(0, sceneIndex + 1),
+        duplicated,
+        ...state.project.scenes.slice(sceneIndex + 1),
+      ];
+
+      const nextState = pushHistory(state, { ...state.project, scenes: newScenes });
+      return { ...nextState, selectedClipId: newId };
+    }
+
+    case 'ADD_AUDIO_TRACK': {
+      const tracks = [...(state.project.audioTracks ?? []), action.track];
+      return pushHistory(state, { ...state.project, audioTracks: tracks });
     }
 
     case 'UPDATE_AUDIO_TRACK': {
@@ -160,8 +262,67 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       return pushHistory(state, { ...state.project, audioTracks: updatedTracks });
     }
 
+    case 'DELETE_AUDIO_TRACK': {
+      if (!state.project.audioTracks) return state;
+      const filtered = state.project.audioTracks.filter((t) => t.id !== action.trackId);
+      return pushHistory(state, { ...state.project, audioTracks: filtered });
+    }
+
+    case 'SET_TRACK_SETTING': {
+      const current = state.project.trackSettings ?? {};
+      const updated = {
+        ...current,
+        [action.trackId]: {
+          ...(current[action.trackId] ?? {}),
+          ...action.setting,
+        },
+      };
+      return pushHistory(state, { ...state.project, trackSettings: updated });
+    }
+
+    case 'SET_SUBTITLES': {
+      return pushHistory(state, { ...state.project, subtitles: action.subtitles });
+    }
+
     case 'UPDATE_PROJECT_METADATA': {
       return pushHistory(state, { ...state.project, ...action.updates });
+    }
+
+    case 'LOAD_PROJECT': {
+      const timeline = buildTimeline(action.project);
+      const reconciled = reconcileTimelineState(
+        state.currentFrame,
+        state.selectedClipId,
+        action.project,
+        timeline
+      );
+      return {
+        ...state,
+        project: action.project,
+        timeline,
+        currentFrame: reconciled.currentFrame,
+        selectedClipId: reconciled.selectedClipId,
+        revision: action.revision ?? state.revision + 1,
+        saveStatus: 'saved',
+        saveError: null,
+        lastSavedAt: Date.now(),
+        historyPast: [],
+        historyFuture: [],
+      };
+    }
+
+    case 'RESET_PROJECT': {
+      const target = action.project ?? demoProject;
+      return createInitialState(target);
+    }
+
+    case 'SET_SAVE_STATUS': {
+      return {
+        ...state,
+        saveStatus: action.status,
+        saveError: action.error ?? null,
+        lastSavedAt: action.savedAt ?? (action.status === 'saved' ? Date.now() : state.lastSavedAt),
+      };
     }
 
     case 'UNDO': {
@@ -169,10 +330,16 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       const prev = state.historyPast[state.historyPast.length - 1];
       const newPast = state.historyPast.slice(0, -1);
       const timeline = buildTimeline(prev);
+      const reconciled = reconcileTimelineState(state.currentFrame, state.selectedClipId, prev, timeline);
+
       return {
         ...state,
         project: prev,
         timeline,
+        currentFrame: reconciled.currentFrame,
+        selectedClipId: reconciled.selectedClipId,
+        revision: state.revision + 1,
+        saveStatus: 'dirty',
         historyPast: newPast,
         historyFuture: [state.project, ...state.historyFuture],
       };
@@ -183,10 +350,16 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       const next = state.historyFuture[0];
       const newFuture = state.historyFuture.slice(1);
       const timeline = buildTimeline(next);
+      const reconciled = reconcileTimelineState(state.currentFrame, state.selectedClipId, next, timeline);
+
       return {
         ...state,
         project: next,
         timeline,
+        currentFrame: reconciled.currentFrame,
+        selectedClipId: reconciled.selectedClipId,
+        revision: state.revision + 1,
+        saveStatus: 'dirty',
         historyPast: [...state.historyPast, state.project],
         historyFuture: newFuture,
       };

@@ -1,11 +1,12 @@
-import React, { useState, useMemo } from 'react';
-import { Type, Sigma, Video, Image, Music, Plus, Search, Trash2 } from 'lucide-react';
+import React, { useState, useMemo, useRef } from 'react';
+import { Type, Sigma, Video, Image, Music, Plus, Search, Trash2, Upload, FileText } from 'lucide-react';
 import { useEditor } from '../../state/editorStore';
 import { PanelHeader } from '../shell/PanelHeader';
 import { Input } from '../ui/Input';
 import { IconButton } from '../ui/IconButton';
 import { SceneConfig } from '../../../domain/video/Scene';
 import { COLOR_TOKENS } from '../../tokens/colors';
+import { generateId } from '../../../shared/utils/id';
 
 type AssetFilter = 'all' | 'text' | 'formula' | 'video' | 'image' | 'audio';
 
@@ -13,15 +14,16 @@ export const AssetPanel: React.FC = () => {
   const { state, dispatch } = useEditor();
   const [filter, setFilter] = useState<AssetFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Predefined scene templates for quick addition
-  const handleAddScene = (type: 'text' | 'formula' | 'video' | 'image') => {
-    const timestamp = Date.now().toString().slice(-4);
+  const handleAddScene = (type: 'text' | 'formula') => {
     let newScene: SceneConfig;
 
     if (type === 'formula') {
       newScene = {
-        id: `scene-formula-${timestamp}`,
+        id: generateId('scene-formula'),
         type: 'formula',
         durationInFrames: 90,
         latex: 'E = mc^2',
@@ -31,42 +33,118 @@ export const AssetPanel: React.FC = () => {
         textColor: '#7DD3FC',
         backgroundColor: '#0F172A',
       };
-    } else if (type === 'video') {
-      newScene = {
-        id: `scene-video-${timestamp}`,
-        type: 'video',
-        durationInFrames: 90,
-        src: 'assets/video/intro.mp4',
-        volume: 1,
-      };
-    } else if (type === 'image') {
-      newScene = {
-        id: `scene-image-${timestamp}`,
-        type: 'image',
-        durationInFrames: 90,
-        src: 'assets/images/background.png',
-        objectFit: 'cover',
-      };
     } else {
       newScene = {
-        id: `scene-text-${timestamp}`,
+        id: generateId('scene-text'),
         type: 'text',
         durationInFrames: 90,
         title: 'NEW SCENE',
-        subtitle: 'Enterprise Subtitle',
+        subtitle: 'Enterprise Video Story',
         backgroundColor: '#0F172A',
         textColor: '#FFFFFF',
         animationType: 'fade',
       };
     }
 
-    dispatch({
-      type: 'UPDATE_PROJECT_METADATA',
-      updates: {
-        scenes: [...state.project.scenes, newScene],
-      },
-    });
-    dispatch({ type: 'SET_SELECTED_CLIP', clipId: newScene.id });
+    dispatch({ type: 'ADD_SCENE', scene: newScene });
+  };
+
+  // Real media file upload handler
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check for SRT subtitle files
+    if (file.name.endsWith('.srt')) {
+      const text = await file.text();
+      // Simple parse SRT cues
+      const cues: Array<{ id: string; startMs: number; endMs: number; text: string }> = [];
+      const blocks = text.trim().split(/\r?\n\r?\n/);
+      for (const block of blocks) {
+        const lines = block.split(/\r?\n/);
+        if (lines.length >= 2) {
+          const timeLine = lines[1].includes('-->') ? lines[1] : lines[0];
+          const textLine = lines.slice(lines.indexOf(timeLine) + 1).join(' ');
+          const parts = timeLine.split('-->');
+          if (parts.length === 2) {
+            const parseMs = (ts: string) => {
+              const [hms, ms] = ts.trim().replace(',', '.').split('.');
+              const [h, m, s] = hms.split(':').map(Number);
+              return (h * 3600 + m * 60 + s) * 1000 + (parseInt(ms || '0', 10));
+            };
+            cues.push({
+              id: generateId('sub'),
+              startMs: parseMs(parts[0]),
+              endMs: parseMs(parts[1]),
+              text: textLine.trim(),
+            });
+          }
+        }
+      }
+      if (cues.length > 0) {
+        dispatch({ type: 'SET_SUBTITLES', subtitles: cues });
+      }
+      e.target.value = '';
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const response = await fetch('/api/assets/upload', {
+        method: 'POST',
+        headers: {
+          'x-file-name': file.name,
+        },
+        body: file,
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Upload failed');
+      }
+
+      const assetUrl = data.url;
+
+      if (file.type.startsWith('image/')) {
+        const imageScene: SceneConfig = {
+          id: generateId('scene-image'),
+          type: 'image',
+          durationInFrames: 90,
+          src: assetUrl,
+          objectFit: 'cover',
+        };
+        dispatch({ type: 'ADD_SCENE', scene: imageScene });
+      } else if (file.type.startsWith('audio/')) {
+        dispatch({
+          type: 'ADD_AUDIO_TRACK',
+          track: {
+            id: generateId('audio'),
+            type: 'voice',
+            src: assetUrl,
+            startFrame: 0,
+            durationInFrames: 120,
+            volume: 1,
+          },
+        });
+      } else {
+        // Video file
+        const videoScene: SceneConfig = {
+          id: generateId('scene-video'),
+          type: 'video',
+          durationInFrames: 90,
+          src: assetUrl,
+          volume: 1,
+          startFromFrame: 0,
+          playbackRate: 1,
+        };
+        dispatch({ type: 'ADD_SCENE', scene: videoScene });
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Media upload failed');
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
   };
 
   const filteredScenes = useMemo(() => {
@@ -116,10 +194,25 @@ export const AssetPanel: React.FC = () => {
         overflow: 'hidden',
       }}
     >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="video/*,image/*,audio/*,.srt"
+        style={{ display: 'none' }}
+        onChange={handleFileUpload}
+      />
+
       <PanelHeader
         title="Assets & Scenes"
         actions={
           <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+            <IconButton
+              icon={<Upload size={13} />}
+              label="Import Media File (Video, Image, Audio, SRT)"
+              size="sm"
+              disabled={isUploading}
+              onClick={() => fileInputRef.current?.click()}
+            />
             <IconButton
               icon={<Sigma size={13} />}
               label="Add Formula Scene"
@@ -132,15 +225,15 @@ export const AssetPanel: React.FC = () => {
               size="sm"
               onClick={() => handleAddScene('text')}
             />
-            <IconButton
-              icon={<Plus size={14} />}
-              label="Add Scene"
-              size="sm"
-              onClick={() => handleAddScene('text')}
-            />
           </div>
         }
       />
+
+      {isUploading && (
+        <div style={{ padding: '6px 12px', backgroundColor: 'var(--accent)', color: '#FFFFFF', fontSize: '11px', textAlign: 'center' }}>
+          Uploading and registering media asset...
+        </div>
+      )}
 
       {/* Search Bar */}
       <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -157,7 +250,7 @@ export const AssetPanel: React.FC = () => {
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Filter assets..."
+            placeholder="Filter scenes..."
             style={{ paddingLeft: '30px', height: '28px', fontSize: '11px' }}
           />
         </div>
@@ -218,13 +311,11 @@ export const AssetPanel: React.FC = () => {
               fontSize: '11px',
             }}
           >
-            No assets match current filter
+            No matching items found.
           </div>
         ) : (
-          filteredScenes.map((scene, index) => {
+          filteredScenes.map((scene) => {
             const isSelected = state.selectedClipId === scene.id;
-            const durationSec = (scene.durationInFrames / state.project.fps).toFixed(1);
-
             return (
               <div
                 key={scene.id}
@@ -233,22 +324,12 @@ export const AssetPanel: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '6px 8px',
+                  padding: '8px 10px',
                   borderRadius: '4px',
-                  backgroundColor: isSelected ? 'var(--bg-active)' : 'transparent',
-                  border: isSelected ? '1px solid var(--accent)' : '1px solid transparent',
+                  backgroundColor: isSelected ? 'var(--bg-panel-elevated)' : 'transparent',
+                  border: isSelected ? '1px solid var(--border-focus)' : '1px solid transparent',
                   cursor: 'pointer',
-                  transition: 'background-color 80ms ease, border-color 80ms ease',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSelected) {
-                    (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-hover)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSelected) {
-                    (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
-                  }
+                  transition: 'background-color 80ms ease',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
@@ -269,9 +350,9 @@ export const AssetPanel: React.FC = () => {
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div
                       style={{
-                        fontSize: '11px',
+                        fontSize: '12px',
                         fontWeight: 500,
-                        color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
+                        color: 'var(--text-primary)',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
@@ -279,56 +360,35 @@ export const AssetPanel: React.FC = () => {
                     >
                       {getSceneDisplayName(scene)}
                     </div>
-                    <div
-                      style={{
-                        fontSize: '10px',
-                        color: 'var(--text-muted)',
-                        display: 'flex',
-                        gap: '6px',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <span style={{ textTransform: 'uppercase' }}>{scene.type}</span>
-                      <span>•</span>
-                      <span>
-                        {durationSec}s ({scene.durationInFrames}f)
-                      </span>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                      {(scene.durationInFrames / state.project.fps).toFixed(1)}s ({scene.durationInFrames}f)
                     </div>
                   </div>
                 </div>
 
                 {state.project.scenes.length > 1 && (
-                  <IconButton
-                    icon={<Trash2 size={12} />}
-                    label="Delete Scene"
-                    size="sm"
-                    style={{ opacity: 0.6 }}
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       dispatch({ type: 'DELETE_SCENE', sceneId: scene.id });
                     }}
-                  />
+                    title="Delete scene"
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      borderRadius: '4px',
+                    }}
+                  >
+                    <Trash2 size={13} />
+                  </button>
                 )}
               </div>
             );
           })
         )}
-      </div>
-
-      {/* Asset Panel Footer Status */}
-      <div
-        style={{
-          padding: '6px 12px',
-          borderTop: '1px solid var(--border-subtle)',
-          backgroundColor: 'var(--bg-panel)',
-          fontSize: '10px',
-          color: 'var(--text-muted)',
-          display: 'flex',
-          justifyContent: 'space-between',
-        }}
-      >
-        <span>{state.project.scenes.length} Scenes in project</span>
-        <span>{state.project.fps} FPS</span>
       </div>
     </aside>
   );

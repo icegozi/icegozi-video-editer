@@ -19,13 +19,9 @@ export const SceneRenderer: React.FC<SceneRendererProps> = ({ computed }) => {
 
   const renderedContent = <Component scene={scene} computed={computed} />;
 
-  if (!scene.transition || scene.transition.type === 'none') {
-    return renderedContent;
-  }
-
-  const transitionDuration = scene.transition.durationInFrames;
-
-  if (scene.transition.type === 'fade') {
+  // Fade-through-black
+  if (scene.transition?.type === 'fade') {
+    const transitionDuration = scene.transition.durationInFrames;
     return (
       <Fade durationInFrames={transitionDuration} totalDurationInFrames={durationInFrames} type="both">
         {renderedContent}
@@ -33,9 +29,21 @@ export const SceneRenderer: React.FC<SceneRendererProps> = ({ computed }) => {
     );
   }
 
-  if (scene.transition.type === 'crossfade') {
+  // Crossfade (incoming and/or outgoing overlap)
+  const inCrossfade = computed.incomingTransition?.type === 'crossfade'
+    ? computed.incomingTransition.durationInFrames
+    : 0;
+  const outCrossfade = scene.transition?.type === 'crossfade'
+    ? scene.transition.durationInFrames
+    : 0;
+
+  if (inCrossfade > 0 || outCrossfade > 0) {
     return (
-      <CrossFade durationInFrames={transitionDuration} totalDurationInFrames={durationInFrames}>
+      <CrossFade
+        inDurationInFrames={inCrossfade}
+        outDurationInFrames={outCrossfade}
+        totalDurationInFrames={durationInFrames}
+      >
         {renderedContent}
       </CrossFade>
     );
@@ -43,3 +51,4 @@ export const SceneRenderer: React.FC<SceneRendererProps> = ({ computed }) => {
 
   return renderedContent;
 };
+

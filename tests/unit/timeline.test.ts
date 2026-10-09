@@ -51,6 +51,31 @@ describe('Timeline Engine', () => {
       expect(timeline.totalDurationInFrames).toBe(180);
       expect(timeline.totalDurationInSeconds).toBe(6);
     });
+
+    it('accurately computes overlapping boundaries for crossfade transitions (Finding I8)', () => {
+      const crossfadeProject = {
+        ...mockProject,
+        scenes: [
+          {
+            ...mockProject.scenes[0],
+            durationInFrames: 90,
+            transition: { type: 'crossfade' as const, durationInFrames: 15 },
+          },
+          {
+            ...mockProject.scenes[1],
+            durationInFrames: 90,
+          },
+        ],
+      };
+
+      const timeline = buildTimeline(crossfadeProject);
+
+      expect(timeline.computedScenes[0].startFrame).toBe(0);
+      expect(timeline.computedScenes[0].endFrame).toBe(90);
+      expect(timeline.computedScenes[1].startFrame).toBe(75); // Overlaps by 15 frames
+      expect(timeline.computedScenes[1].endFrame).toBe(165);
+      expect(timeline.totalDurationInFrames).toBe(165); // 90 + 90 - 15 = 165 frames
+    });
   });
 
   describe('validateTimeline', () => {
@@ -64,5 +89,24 @@ describe('Timeline Engine', () => {
 
       expect(() => validateTimeline(invalidTimeline)).toThrow(InvalidTimelineError);
     });
+
+    it('rejects non-finite frame values (Finding M3)', () => {
+      const nanTimeline = {
+        fps: 30,
+        totalDurationInFrames: NaN,
+        totalDurationInSeconds: NaN,
+        computedScenes: [
+          {
+            scene: mockProject.scenes[0],
+            startFrame: 0,
+            durationInFrames: NaN,
+            endFrame: NaN,
+          },
+        ],
+      };
+
+      expect(() => validateTimeline(nanTimeline as any)).toThrow(InvalidTimelineError);
+    });
   });
 });
+

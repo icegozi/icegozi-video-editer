@@ -2,36 +2,42 @@ import React from 'react';
 import { useCurrentFrame, interpolate } from 'remotion';
 
 export interface CrossFadeProps {
-  durationInFrames: number;
+  inDurationInFrames?: number;
+  outDurationInFrames?: number;
   totalDurationInFrames: number;
   children: React.ReactNode;
 }
 
 /**
  * Crossfade component supporting continuity-first editing.
- * Fades in at the beginning and out at the end of a scene duration.
+ * Fades in during incoming transition and fades out during outgoing transition.
  */
 export const CrossFade: React.FC<CrossFadeProps> = ({
-  durationInFrames,
+  inDurationInFrames = 0,
+  outDurationInFrames = 0,
   totalDurationInFrames,
   children,
 }) => {
   const frame = useCurrentFrame();
 
-  const fadeIn = interpolate(frame, [0, durationInFrames], [0, 1], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  });
+  const fadeIn = inDurationInFrames > 0
+    ? interpolate(frame, [0, inDurationInFrames], [0, 1], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+      })
+    : 1;
 
-  const fadeOut = interpolate(
-    frame,
-    [totalDurationInFrames - durationInFrames, totalDurationInFrames],
-    [1, 0],
-    {
-      extrapolateLeft: 'clamp',
-      extrapolateRight: 'clamp',
-    }
-  );
+  const fadeOut = outDurationInFrames > 0
+    ? interpolate(
+        frame,
+        [totalDurationInFrames - outDurationInFrames, totalDurationInFrames],
+        [1, 0],
+        {
+          extrapolateLeft: 'clamp',
+          extrapolateRight: 'clamp',
+        }
+      )
+    : 1;
 
   const opacity = Math.min(fadeIn, fadeOut);
 

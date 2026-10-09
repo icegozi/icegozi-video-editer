@@ -26,6 +26,17 @@ export const PreviewWorkspace: React.FC = () => {
     }
   }, [state.currentFrame]);
 
+  // Sync volume -> Player
+  useEffect(() => {
+    if (!playerRef.current) return;
+    try {
+      playerRef.current.setVolume(volume);
+    } catch {
+      // Ignore if player not fully mounted
+    }
+  }, [volume]);
+
+
   // Sync state.isPlaying -> Player
   useEffect(() => {
     if (!playerRef.current) return;
