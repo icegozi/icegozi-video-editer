@@ -1,0 +1,44 @@
+{
+  "name": "icegozi_video",
+  "version": "1.0.0",
+  "description": "AI-assisted programmable video editing system based on Remotion and FFmpeg",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3200",
+    "build:editor": "vite build",
+    "render": "tsx scripts/render-preview.ts --profile final",
+    "render:preview": "tsx scripts/render-preview.ts --profile preview",
+    "render:direct": "remotion render src/app/Root.tsx MainVideo output/main_video.mp4",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "media:inspect": "tsx scripts/inspect-media.ts",
+    "media:validate": "tsx scripts/validate-assets.ts",
+    "media:normalize": "tsx scripts/normalize-media.ts",
+    "clean:generated": "tsx scripts/clean-generated.ts"
+  },
+  "dependencies": {
+    "@remotion/captions": "^4.0.260",
+    "@remotion/media-utils": "^4.0.260",
+    "@remotion/player": "^4.0.534",
+    "@remotion/transitions": "^4.0.260",
+    "lucide-react": "^1.52.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "remotion": "^4.0.260",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@remotion/cli": "^4.0.260",
+    "@types/node": "^22.13.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "prettier": "^3.5.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vite": "^6.4.4",
+    "vitest": "^3.0.5"
+  }
+}

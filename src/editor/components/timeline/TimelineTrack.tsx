@@ -1,0 +1,41 @@
+import React from 'react';
+
+export interface TimelineTrackProps {
+  totalWidthPx: number;
+  height?: number;
+  children?: React.ReactNode;
+}
+
+export const TimelineTrack: React.FC<TimelineTrackProps> = ({
+  totalWidthPx,
+  height = 52,
+  children,
+}) => {
+  return (
+    <div
+      style={{
+        position: 'relative',
+        width: `${totalWidthPx}px`,
+        height: `${height}px`,
+        backgroundColor: 'var(--bg-app)',
+        borderBottom: '1px solid var(--border-subtle)',
+        boxSizing: 'border-box',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Background Grid Lines / Lane styling */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundImage:
+            'linear-gradient(to right, var(--border-subtle) 1px, transparent 1px)',
+          backgroundSize: '100px 100%',
+          opacity: 0.25,
+          pointerEvents: 'none',
+        }}
+      />
+      {children}
+    </div>
+  );
+};

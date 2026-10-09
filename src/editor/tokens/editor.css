@@ -1,0 +1,71 @@
+/* Scoped Enterprise Design Tokens & Reset */
+:root {
+  --bg-app: #0B0D10;
+  --bg-panel: #111419;
+  --bg-panel-elevated: #161A20;
+  --bg-surface: #1B2027;
+  --bg-hover: #222832;
+  --bg-active: #29313D;
+
+  --border-subtle: #252B34;
+  --border-default: #303844;
+  --border-strong: #414B59;
+
+  --text-primary: #F2F4F7;
+  --text-secondary: #AAB2BF;
+  --text-muted: #737D8C;
+  --text-disabled: #515A66;
+
+  --accent: #5B8CFF;
+  --accent-hover: #73A0FF;
+  --accent-active: #4777E6;
+  --accent-soft: rgba(91, 140, 255, 0.14);
+
+  --success: #35C78A;
+  --warning: #F2B84B;
+  --danger: #E66363;
+  --info: #5B8CFF;
+
+  --playhead: #FF5D73;
+  --snap-guide: #5B8CFF;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
