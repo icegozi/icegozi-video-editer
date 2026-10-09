@@ -103,6 +103,25 @@ export class ProjectStorage {
     // Update project list
     this.updateProjectCatalog(validated, now);
 
+    // Asynchronously sync to backend SQLite database if in browser environment
+    if (typeof window !== 'undefined' && typeof fetch !== 'undefined') {
+      try {
+        fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project: validated,
+            revision,
+            changeSummary: `Revision ${revision}`,
+          }),
+        }).catch(() => {
+          // Offline fallback
+        });
+      } catch {
+        // Offline fallback
+      }
+    }
+
     return { revision, savedAt: now };
   }
 

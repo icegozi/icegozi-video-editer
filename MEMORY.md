@@ -36,6 +36,13 @@
 - `npm run dev` starts the Vite editor on port 3200 (includes render API plugin).
 - `npm run render:preview` and `npm run render` invoke the CLI render pipeline.
 
+## User Corrections & Database Decisions
+
+- 2026-10-10: User explicitly specified target platform is a local setup / build on Windows desktop.
+- Database choice is SQLite (file-based embedded database) instead of PostgreSQL/client-server databases to eliminate external service setup on Windows.
+- Data access: Drizzle ORM with `better-sqlite3`.
+- Windows SQLite operational rules: Must configure WAL mode (`pragma journal_mode = WAL`), `pragma busy_timeout = 5000`, `pragma foreign_keys = ON`, `pragma synchronous = NORMAL`.
+
 ## Collaboration
 
 - A request for a review and an implementation prompt authorizes review documents, not application changes.

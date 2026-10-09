@@ -6,6 +6,8 @@ import { ProjectTimeline } from '../../domain/video/Timeline';
 import { buildTimeline } from '../../application/timeline/buildTimeline';
 import { demoProject } from '../../../projects/demo/project';
 import { generateId } from '../../shared/utils/id';
+import { validateProposal } from '../../application/assistant/projectProposals';
+import type { ProjectProposal } from '../../shared/types/assistant';
 
 export type PersistenceStatus = 'saved' | 'dirty' | 'saving' | 'error';
 
@@ -26,9 +28,14 @@ export interface EditorState {
   saveError: string | null;
   historyPast: VideoProject[];
   historyFuture: VideoProject[];
+  assistantEpoch: string | null;
+  appliedAiProposalIds: string[];
+  assistantApplyError: string | null;
 }
 
 export type EditorAction =
+  | { type: 'SET_ASSISTANT_SESSION'; epoch: string | null }
+  | { type: 'APPLY_AI_PROJECT_CHANGE'; proposal: ProjectProposal }
   | { type: 'SET_CURRENT_FRAME'; frame: number }
   | { type: 'SET_IS_PLAYING'; isPlaying: boolean }
   | { type: 'TOGGLE_PLAYING' }
@@ -99,6 +106,9 @@ export function createInitialState(initialProject: VideoProject = demoProject): 
     saveError: null,
     historyPast: [],
     historyFuture: [],
+    assistantEpoch: null,
+    appliedAiProposalIds: [],
+    assistantApplyError: null,
   };
 }
 
@@ -127,6 +137,18 @@ export function pushHistory(state: EditorState, newProject: VideoProject): Edito
 
 export function editorReducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
+    case 'SET_ASSISTANT_SESSION':
+      return { ...state, assistantEpoch: action.epoch, assistantApplyError: null };
+    case 'APPLY_AI_PROJECT_CHANGE': {
+      try {
+        if (state.appliedAiProposalIds.includes(action.proposal.id)) throw new Error('Proposal đã được áp dụng.');
+        if (state.appliedAiProposalIds.length >= 1000) throw new Error('Hãy mở lại project để bắt đầu phiên chỉnh sửa mới.');
+        const proposal = validateProposal(state.project, state.revision, state.assistantEpoch, action.proposal);
+        return { ...pushHistory(state, proposal.candidate), appliedAiProposalIds: [...state.appliedAiProposalIds, proposal.id], assistantApplyError: null };
+      } catch (error) {
+        return { ...state, assistantApplyError: error instanceof Error ? error.message : 'Proposal không hợp lệ.' };
+      }
+    }
     case 'SET_CURRENT_FRAME': {
       const maxFrame = Math.max(0, state.timeline.totalDurationInFrames - 1);
       const clamped = Number.isFinite(action.frame)
@@ -308,6 +330,8 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         lastSavedAt: Date.now(),
         historyPast: [],
         historyFuture: [],
+        assistantEpoch: null,
+        assistantApplyError: null,
       };
     }
 

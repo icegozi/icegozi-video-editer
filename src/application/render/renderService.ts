@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, ChildProcess } from 'node:child_process';
+import { eq, desc } from 'drizzle-orm';
 import { VideoProject } from '../../domain/video/VideoProject';
 import { VideoProjectSchema, migrateProject } from '../../schemas/project.schema';
 import { RenderProfile, RENDER_CONFIG } from '../../config/render.config';
@@ -8,6 +9,10 @@ import { PATHS } from '../../config/paths.config';
 import { ensureDirectories } from '../../infrastructure/filesystem/ensureDirectories';
 import { logger } from '../../infrastructure/logging/logger';
 import { generateId } from '../../shared/utils/id';
+import { db } from '../../infrastructure/db/client';
+import { renderJobs } from '../../infrastructure/db/schema/renderJobs';
+import { projectSnapshots, projects } from '../../infrastructure/db/schema/projects';
+import { ProjectDbService } from '../../infrastructure/db/projectDbService';
 
 export type RenderJobStatus = 'queued' | 'rendering' | 'completed' | 'failed' | 'cancelled';
 
@@ -26,7 +31,7 @@ export interface RenderJob {
 }
 
 class RenderService {
-  private jobs = new Map<string, RenderJob>();
+  private activeJobs = new Map<string, RenderJob>();
 
   constructor() {
     ensureDirectories();
@@ -39,11 +44,23 @@ class RenderService {
     const project = migrateProject(rawProject);
     const validated = VideoProjectSchema.parse(project) as VideoProject;
 
+    // Persist project and get snapshot record in SQLite
+    const { revision } = ProjectDbService.saveProject(validated);
+    const snapshotRecord = db
+      .select()
+      .from(projectSnapshots)
+      .where(eq(projectSnapshots.projectId, validated.id))
+      .orderBy(desc(projectSnapshots.revision))
+      .limit(1)
+      .get();
+    const snapshotId = snapshotRecord?.id || generateId('snap');
+
     const jobId = generateId('job').slice(0, 16);
     const targetDir = profileName === RenderProfile.Preview ? PATHS.previews : PATHS.output;
     const sanitizedTitle = validated.title.toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 30);
     const outputFilename = `${sanitizedTitle}_${profileName}_${jobId}.mp4`;
     const outputPath = path.resolve(targetDir, outputFilename);
+    const now = Date.now();
 
     const job: RenderJob = {
       id: jobId,
@@ -54,11 +71,27 @@ class RenderService {
       outputPath,
       downloadUrl: `/api/render/download/${jobId}`,
       error: null,
-      createdAt: Date.now(),
+      createdAt: now,
       completedAt: null,
     };
 
-    this.jobs.set(jobId, job);
+    // Save initial job record in SQLite
+    db.insert(renderJobs)
+      .values({
+        id: jobId,
+        projectId: validated.id,
+        snapshotId,
+        profile: profileName,
+        status: 'queued',
+        progress: 0,
+        outputStorageKey: outputPath,
+        downloadUrl: job.downloadUrl,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    this.activeJobs.set(jobId, job);
 
     // Save snapshot of current project for rendering
     const snapshotPath = path.resolve(PATHS.temp, `snapshot_${jobId}.json`);
@@ -71,21 +104,75 @@ class RenderService {
   }
 
   getJob(jobId: string): RenderJob | null {
-    return this.jobs.get(jobId) ?? null;
+    const active = this.activeJobs.get(jobId);
+    if (active) return active;
+
+    // Fallback to SQLite database if not in active memory
+    const record = db
+      .select({
+        job: renderJobs,
+        project: projects,
+      })
+      .from(renderJobs)
+      .leftJoin(projects, eq(renderJobs.projectId, projects.id))
+      .where(eq(renderJobs.id, jobId))
+      .get();
+
+    if (!record) return null;
+
+    return {
+      id: record.job.id,
+      projectTitle: record.project?.title || 'Video Project',
+      profile: record.job.profile as RenderProfile,
+      status: record.job.status as RenderJobStatus,
+      progress: record.job.progress,
+      outputPath: record.job.outputStorageKey,
+      downloadUrl: record.job.downloadUrl,
+      error: record.job.errorMessage,
+      createdAt: record.job.createdAt,
+      completedAt: record.job.completedAt,
+    };
   }
 
   listJobs(): RenderJob[] {
-    return Array.from(this.jobs.values()).sort((a, b) => b.createdAt - a.createdAt);
+    const records = db
+      .select({
+        job: renderJobs,
+        project: projects,
+      })
+      .from(renderJobs)
+      .leftJoin(projects, eq(renderJobs.projectId, projects.id))
+      .orderBy(desc(renderJobs.createdAt))
+      .all();
+
+    return records.map((r) => {
+      const active = this.activeJobs.get(r.job.id);
+      if (active) return active;
+
+      return {
+        id: r.job.id,
+        projectTitle: r.project?.title || 'Video Project',
+        profile: r.job.profile as RenderProfile,
+        status: r.job.status as RenderJobStatus,
+        progress: r.job.progress,
+        outputPath: r.job.outputStorageKey,
+        downloadUrl: r.job.downloadUrl,
+        error: r.job.errorMessage,
+        createdAt: r.job.createdAt,
+        completedAt: r.job.completedAt,
+      };
+    });
   }
 
   cancelJob(jobId: string): boolean {
-    const job = this.jobs.get(jobId);
+    const job = this.getJob(jobId);
     if (!job) return false;
 
     if (job.status === 'queued' || job.status === 'rendering') {
-      if (job.process && !job.process.killed) {
+      const active = this.activeJobs.get(jobId);
+      if (active?.process && !active.process.killed) {
         try {
-          job.process.kill('SIGTERM');
+          active.process.kill('SIGTERM');
         } catch {
           // Ignore kill error
         }
@@ -94,6 +181,12 @@ class RenderService {
       job.completedAt = Date.now();
       job.error = 'Render job cancelled by user';
       logger.info(`Render job ${jobId} cancelled by user`);
+
+      this.updateDbJob(jobId, {
+        status: 'cancelled',
+        completedAt: job.completedAt,
+        errorMessage: job.error,
+      });
 
       // Clean up partial output if exists
       if (job.outputPath && fs.existsSync(job.outputPath)) {
@@ -110,9 +203,32 @@ class RenderService {
     return false;
   }
 
+  private updateDbJob(
+    jobId: string,
+    updates: Partial<{
+      status: string;
+      progress: number;
+      completedAt: number | null;
+      errorMessage: string | null;
+    }>
+  ): void {
+    try {
+      db.update(renderJobs)
+        .set({
+          ...updates,
+          updatedAt: Date.now(),
+        })
+        .where(eq(renderJobs.id, jobId))
+        .run();
+    } catch (e) {
+      logger.warn(`Failed to update SQLite render_jobs record for ${jobId}: ${e}`);
+    }
+  }
+
   private executeJob(job: RenderJob, snapshotPath: string): void {
     job.status = 'rendering';
     job.progress = 5;
+    this.updateDbJob(job.id, { status: 'rendering', progress: 5 });
 
     const profileSettings = RENDER_CONFIG[job.profile];
     const isWindows = process.platform === 'win32';
@@ -152,6 +268,7 @@ class RenderService {
         const pct = parseInt(percentMatch[1], 10);
         if (pct >= 5 && pct <= 98) {
           job.progress = pct;
+          this.updateDbJob(job.id, { progress: pct });
         }
       }
     });
@@ -180,6 +297,11 @@ class RenderService {
           job.status = 'completed';
           job.progress = 100;
           job.completedAt = Date.now();
+          this.updateDbJob(job.id, {
+            status: 'completed',
+            progress: 100,
+            completedAt: job.completedAt,
+          });
           logger.info(`Render job ${job.id} completed successfully! Output: ${job.outputPath} (${stat.size} bytes)`);
           return;
         }
@@ -188,6 +310,11 @@ class RenderService {
       job.status = 'failed';
       job.completedAt = Date.now();
       job.error = accumulatedStderr.slice(-400) || `Remotion process exited with code ${code}`;
+      this.updateDbJob(job.id, {
+        status: 'failed',
+        completedAt: job.completedAt,
+        errorMessage: job.error,
+      });
       logger.error(`Render job ${job.id} failed: ${job.error}`);
     });
 
@@ -196,6 +323,11 @@ class RenderService {
         job.status = 'failed';
         job.completedAt = Date.now();
         job.error = err.message;
+        this.updateDbJob(job.id, {
+          status: 'failed',
+          completedAt: job.completedAt,
+          errorMessage: job.error,
+        });
         logger.error(`Render job ${job.id} spawn error: ${err.message}`);
       }
     });

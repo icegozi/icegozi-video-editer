@@ -45,3 +45,9 @@ Thumbs.db
 .agents/*
 .claude/*
 .agent/*
+
+# Local SQLite databases
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
