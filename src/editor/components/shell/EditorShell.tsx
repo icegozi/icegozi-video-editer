@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { AssistantPanel } from '../assistant/AssistantPanel';
 import { CommandBar } from './CommandBar';
 import { ResizablePanel } from './ResizablePanel';
 import { AssetPanel } from '../assets/AssetPanel';
@@ -9,6 +10,7 @@ import { ExportModal } from '../export/ExportModal';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 
 export const EditorShell: React.FC = () => {
+  const [assistantOpen, setAssistantOpen] = useState(false);
   // Activate keyboard navigation & shortcuts
   useKeyboardShortcuts();
 
@@ -26,7 +28,7 @@ export const EditorShell: React.FC = () => {
       }}
     >
       {/* 1. Global Command Bar (52px) */}
-      <CommandBar />
+      <CommandBar onToggleAssistant={() => setAssistantOpen((open) => !open)} />
 
       {/* 2. Top Workspaces (Assets | Preview | Inspector) */}
       <div
@@ -81,6 +83,7 @@ export const EditorShell: React.FC = () => {
 
       {/* 4. Global Modals */}
       <ExportModal />
+      <AssistantPanel open={assistantOpen} onClose={() => setAssistantOpen(false)} />
     </div>
   );
 };

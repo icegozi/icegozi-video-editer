@@ -20,14 +20,6 @@ function safeSession(saved: StoredState): SessionState {
   const profile = selectedProfile(saved);
   if (!profile) return { status: "disconnected", sharing: false };
   return {
-    // Modified: reuse the SDK's locked renewal and epoch checks for app-server.
-    async getRuntimeCredential() {
-      return authenticated(async (accessToken) => {
-        const session = safeSession(await read());
-        if (!session.profileId) throw new ChatGPTError('sign_in_required', 'Sign in to continue.');
-        return { accessToken, profileId: session.profileId };
-      });
-    },
     status: profile.status,
     sharing: profile.status === "connected" && Boolean(profile.credentials) && profile.scopes.includes(SHARING_SCOPE),
     profileId: profile.id,
@@ -157,6 +149,7 @@ export function createChatGPT(config: ChatGPTConfig): ChatGPTClient {
       publish(connection.session);
       const result = await operation(connection.accessToken, signal);
       signal.throwIfAborted();
+      if (currentEpoch !== epoch) throw new ChatGPTError('cancelled', 'The request was cancelled.');
       return result;
     } catch (error) {
       const typed = asError(error);
@@ -172,6 +165,14 @@ export function createChatGPT(config: ChatGPTConfig): ChatGPTClient {
   }
 
   return {
+    // Modified: reuse the SDK's locked renewal and epoch checks for app-server.
+    async getRuntimeCredential() {
+      return authenticated(async (accessToken) => {
+        const session = safeSession(await read());
+        if (!session.profileId) throw new ChatGPTError('sign_in_required', 'Sign in to continue.');
+        return { accessToken, profileId: session.profileId };
+      });
+    },
     async signIn(options = {}) {
       assertIdle();
       if (options.newProfile && options.profileId) throw new ChatGPTError("invalid_config", "Choose either a new profile or a saved profile.");

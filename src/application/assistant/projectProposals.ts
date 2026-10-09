@@ -26,8 +26,8 @@ export function projectAssets(project: VideoProject): string[] {
   ])];
 }
 
-export function validateCandidate(base: VideoProject, raw: unknown): VideoProject {
-  const candidate = VideoProjectSchema.parse(raw) as VideoProject;
+export function validateCandidate(base: VideoProject, raw: unknown): ReturnType<typeof VideoProjectSchema.parse> {
+  const candidate = VideoProjectSchema.parse(raw);
   if (candidate.id !== base.id) throw new Error('Proposal phải thuộc project đang mở.');
   const ids = [...candidate.scenes, ...(candidate.audioTracks ?? []), ...(candidate.subtitles ?? [])].map((v) => v.id);
   if (new Set(ids).size !== ids.length) throw new Error('ID scene/audio/subtitle phải duy nhất.');

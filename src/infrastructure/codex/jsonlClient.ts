@@ -56,7 +56,7 @@ export class JsonlClient {
   private handleData = (chunk: Buffer) => {
     try { this.parser.push(chunk); } catch { this.dispose(); }
   };
-  private handleEnd = () => { try { this.parser.finish(); } finally { this.dispose(); } };
+  private handleEnd = () => { try { this.parser.finish(); } catch { /* EOF is never turn success. */ } finally { this.dispose(); } };
   private handleClose = () => this.dispose();
   private receive(message: RpcMessage): void {
     if (message.method !== undefined) {

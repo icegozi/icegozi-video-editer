@@ -5,7 +5,7 @@ import { useProjectPersistence } from '../../hooks/useProjectPersistence';
 import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
 
-export const CommandBar: React.FC = () => {
+export const CommandBar: React.FC<{ onToggleAssistant?: () => void }> = ({ onToggleAssistant }) => {
   const { state, dispatch } = useEditor();
   const { saveNow, exportJson, importJson, resetToDemo } = useProjectPersistence();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -156,6 +156,7 @@ export const CommandBar: React.FC = () => {
 
       {/* Right: Actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <Button size="sm" onClick={onToggleAssistant}>Trợ lý AI</Button>
         <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
           <IconButton
             icon={<Undo2 size={14} />}
