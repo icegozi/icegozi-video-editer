@@ -162,3 +162,27 @@ body {
 .spin-animation {
   animation: spin 1s linear infinite;
 }
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--motion-duration-normal, 180ms) var(--motion-ease, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.brand-badge-glow {
+  box-shadow: 0 0 12px rgba(53, 104, 232, 0.25);
+}
+
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+}
