@@ -39,11 +39,13 @@ export class JsonlClient {
   private initialized = false;
   private closed = false;
   private parser: JsonlParser;
+  private exited: Promise<void>;
   onNotification: (message: RpcMessage) => void = () => undefined;
   onServerRequest: (message: RpcMessage) => void = () => undefined;
   onClose: () => void = () => undefined;
 
   constructor(private child: ChildProcessWithoutNullStreams) {
+    this.exited = new Promise((resolve) => child.once('close', () => resolve()));
     this.parser = new JsonlParser((message) => this.receive(message));
     child.stdout.on('data', this.handleData);
     child.stdout.on('end', this.handleEnd);
@@ -100,6 +102,13 @@ export class JsonlClient {
   }
   respond(id: RpcId, result: unknown): void { this.write({ id, result }); }
   rejectRequest(id: RpcId): void { this.write({ id, error: { code: -32601, message: 'Unsupported or stale application request' } }); }
+  async stop(): Promise<void> {
+    this.dispose();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([this.exited, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new AssistantError('runtime_stop_timeout', 'Runtime chưa đóng. Không khởi động lại để tránh phát tác vụ trùng.')), 5000); })]);
+    } finally { clearTimeout(timer); }
+  }
   dispose(): void {
     if (this.closed) return;
     this.closed = true;

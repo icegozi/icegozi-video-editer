@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, ChildProcess } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { eq, desc } from 'drizzle-orm';
 import { VideoProject } from '../../domain/video/VideoProject';
 import { VideoProjectSchema, migrateProject } from '../../schemas/project.schema';
@@ -231,29 +232,33 @@ class RenderService {
     this.updateDbJob(job.id, { status: 'rendering', progress: 5 });
 
     const profileSettings = RENDER_CONFIG[job.profile];
-    const isWindows = process.platform === 'win32';
-    const npxCmd = isWindows ? 'npx.cmd' : 'npx';
+    const require = createRequire(import.meta.url);
+    const cli = path.join(path.dirname(require.resolve('@remotion/cli/package.json')), 'remotion-cli.js');
 
     const args = [
-      'remotion',
+      cli,
       'render',
       'src/index.ts',
       'MainVideo',
-      `"${job.outputPath!}"`,
-      `"--props=${snapshotPath}"`,
+      job.outputPath!,
+      `--props=${snapshotPath}`,
       `--crf=${profileSettings.crf}`,
       `--jpeg-quality=${profileSettings.jpegQuality}`,
+      `--codec=${profileSettings.codec}`,
+      `--pixel-format=${profileSettings.pixelFormat}`,
       `--scale=${job.profile === RenderProfile.Preview ? 0.5 : 1}`,
       '--gl=angle',
     ];
 
-    logger.info(`Starting render job ${job.id}: ${npxCmd} ${args.join(' ')}`);
+    logger.info(`Starting render job ${job.id}`);
 
-    const child = spawn(npxCmd, args, {
+    const child = spawn(process.execPath, args, {
       cwd: PATHS.root,
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env },
-      shell: isWindows,
+      env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot, TEMP: process.env.TEMP, TMP: process.env.TMP,
+        HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE, LOCALAPPDATA: process.env.LOCALAPPDATA },
+      shell: false,
+      windowsHide: true,
     });
 
     job.process = child;
@@ -274,7 +279,7 @@ class RenderService {
     });
 
     child.stderr.on('data', (data: Buffer) => {
-      accumulatedStderr += data.toString();
+      accumulatedStderr = (accumulatedStderr + data.toString()).slice(-8000);
     });
 
     child.on('close', (code: number | null) => {

@@ -6,4 +6,6 @@ OpenAI code retains the accompanying Noncommercial License v1.0.
 Modifications (2026-10-10): index.ts/types.ts add a Node-only authenticated
 credential accessor for Codex app-server and guard its returned token by epoch.
 All modifications to these files are under the same license.
+storage.ts also rejects symlink/junction ancestors and credential-file symlinks
+on Windows before reads; original files remain intact on rejection.
 No upstream React components or fonts are included.

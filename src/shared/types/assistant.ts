@@ -38,6 +38,7 @@ export interface AssistantProfile {
   pending?: boolean;
 }
 export interface AssistantRender {
+  requestId?: string;
   id: string;
   projectId: string;
   fingerprint: string;
@@ -62,6 +63,7 @@ export interface AssistantEvent {
   conversation: AssistantConversation;
 }
 export interface AssistantStatus {
+  bridgeEpoch: string;
   auth: AssistantAuth;
   profiles: AssistantProfile[];
   models: { slug: string; displayName: string }[];

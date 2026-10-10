@@ -16,6 +16,16 @@ Designed for high-precision motion graphics, mathematical formulas, text overlay
 
 ## Getting Started
 
+### Local editor with ChatGPT/Codex assistant
+
+On Windows with Node 24, run `npm ci` then `npm run dev` and open
+**http://127.0.0.1:3200**. Click **Trợ lý AI** → **Continue with ChatGPT**.
+The local SIWC integration uses each user's own account and plan permission.
+See [setup, licensing, security limits and verification](ASSISTANT_INTEGRATION.md).
+The pinned runtime is Codex 0.160.1; static `dist` alone has no Node bridge.
+The MVP is for personal noncommercial use; paid, business or hosted use needs
+provider/licensing review. No API-key fallback or billing management is included.
+
 ### 1. Installation
 
 ```bash

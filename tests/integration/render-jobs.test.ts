@@ -4,6 +4,18 @@ import { RenderProfile } from '../../src/config/render.config';
 import { mockProject } from '../fixtures/mock-project';
 import { VideoProject } from '../../src/domain/video/VideoProject';
 import fs from 'node:fs';
+import { spawn } from 'node:child_process';
+
+vi.mock('node:child_process', async () => {
+  const { EventEmitter } = await import('node:events');
+  const { PassThrough } = await import('node:stream');
+  return { spawn: vi.fn(() => {
+    const emitter = new EventEmitter();
+    return Object.assign(emitter, { stdout: new PassThrough(), stderr: new PassThrough(), killed: false,
+      kill() { this.killed = true; emitter.emit('close', 0); return true; },
+    });
+  }) };
+});
 
 describe('Render Service & Job Lifecycle (Finding I1)', () => {
   const customProject: VideoProject = {
@@ -28,6 +40,16 @@ describe('Render Service & Job Lifecycle (Finding I1)', () => {
     expect(job.profile).toBe(RenderProfile.Preview);
     expect(job.outputPath).toContain('custom_user_snapshot_video');
     expect(job.status === 'queued' || job.status === 'rendering').toBe(true);
+    const args = vi.mocked(spawn).mock.calls.at(-1)!;
+    expect(args[0]).toBe(process.execPath);
+    expect(args[2]).toMatchObject({ shell: false, windowsHide: true });
+    const renderArgs = args[1] as string[];
+    const snapshotArg = renderArgs.find((arg) => arg.startsWith('--props='))!;
+    const snapshot = JSON.parse(fs.readFileSync(snapshotArg.slice('--props='.length), 'utf8'));
+    expect(snapshot.project.title).toBe(customProject.title);
+    expect(renderArgs).toContain('--codec=h264');
+    expect(renderArgs).toContain('--pixel-format=yuv420p');
+    renderService.cancelJob(job.id);
   });
 
   it('retrieves created jobs via getJob and listJobs', () => {
@@ -39,6 +61,7 @@ describe('Render Service & Job Lifecycle (Finding I1)', () => {
 
     const allJobs = renderService.listJobs();
     expect(allJobs.some((j) => j.id === job.id)).toBe(true);
+    renderService.cancelJob(job.id);
   });
 
   it('cancels an active render job safely', () => {

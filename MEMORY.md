@@ -47,3 +47,12 @@
 
 - A request for a review and an implementation prompt authorizes review documents, not application changes.
 - Preserve existing staged, unstaged, and untracked work. Do not create commits or alter branch history without an explicit request.
+
+## Local ChatGPT/Codex Assistant
+
+- The assistant uses SIWC and each user's own ChatGPT plan permission; never reuse `.env.local` API keys, Codex auth files or ChatGPT cookies as fallback.
+- Browser project state is authoritative. AI changes use `APPLY_AI_PROJECT_CHANGE` with epoch/revision/SHA-256 checks and one undo entry; `LOAD_PROJECT` is not an AI edit.
+- Credentials are encrypted with Windows current-user DPAPI outside the repository. The vendored official SIWC DevKit retains its Noncommercial License; business/hosted distribution needs separate evaluation.
+- Codex 0.160.1 uses explicit empty machine environments and only app-owned namespace tools. Generated experimental schemas are checked in; actual native startup rejects `untrusted`, so the adapter uses `on-request` and declines machine approvals.
+- Wait for the owned process to close before restarting with rotated credentials; immediate respawn can race its SQLite files. Keep runtime homes separate per registration/conversation.
+- Render CLI launches Node directly with an argument array, shell disabled and a filtered environment; codec/pixel format come from the render profile.

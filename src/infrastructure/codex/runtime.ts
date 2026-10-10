@@ -44,7 +44,7 @@ export function runtimeArguments(): string[] {
     'model_providers.openai_chatgpt_plan.wire_api="responses"',
     'model_providers.openai_chatgpt_plan.requires_openai_auth=false',
     'model_providers.openai_chatgpt_plan.supports_websockets=false',
-    'web_search="disabled"', 'approval_policy="untrusted"', 'sandbox_mode="read-only"',
+    'web_search="disabled"', 'approval_policy="on-request"', 'sandbox_mode="read-only"',
     'shell_environment_policy.inherit="none"', 'shell_environment_policy.exclude=["*"]',
     ...['shell_tool', 'unified_exec', 'view_image', 'multi_agent', 'multi_agent_v2', 'code_mode', 'code_mode_host', 'apps', 'plugins', 'browser_use', 'computer_use', 'image_generation', 'memories', 'hooks', 'skill_search', 'skill_mcp_dependency_install', 'workspace_dependencies', 'tool_suggest', 'goals'].map((feature) => `features.${feature}=false`),
   ];

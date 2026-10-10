@@ -1,6 +1,6 @@
 import { constants } from "node:fs";
-import { chmod, lstat, mkdir, open, rename, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { chmod, lstat, mkdir, open, rename, rm, realpath } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import lockfile from "proper-lockfile";
@@ -97,6 +97,10 @@ export class ConnectionStore {
   async #prepare(): Promise<void> {
     await mkdir(this.directory, { recursive: true, mode: 0o700 });
     const info = await lstat(this.directory);
+    // Modified: reject junctions in ancestor directories on Windows too.
+    if ((await realpath(this.directory)).toLowerCase() !== resolve(this.directory).toLowerCase()) {
+      throw new ChatGPTError('storage_unsafe', 'Credential storage must not traverse symlinks or junctions.');
+    }
     if (!info.isDirectory() || info.isSymbolicLink()) {
       throw new ChatGPTError("storage_unsafe", "ChatGPT storage must be a private directory, not a symbolic link.");
     }
@@ -161,6 +165,8 @@ export class ConnectionStore {
   async #readFile(filename: string): Promise<unknown> {
     this.#assertLocked();
     try {
+      // Modified: O_NOFOLLOW is unavailable on Windows; inspect before opening.
+      if ((await lstat(filename)).isSymbolicLink()) throw new ChatGPTError('storage_unsafe', 'Credential files must not be symbolic links.');
       const noFollow = process.platform === "win32" ? 0 : constants.O_NOFOLLOW;
       const file = await open(filename, constants.O_RDONLY | noFollow);
       try {

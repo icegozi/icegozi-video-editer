@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
@@ -13,6 +13,20 @@ import { renderService } from '../../application/render/renderService';
 import { RenderProfile } from '../../config/render.config';
 import { PATHS } from '../../config/paths.config';
 import type { AssistantStatus } from '../../shared/types/assistant';
+import { ConversationStorage } from '../chatgpt/conversationStorage';
+import { validateAssistantAssets } from '../filesystem/assistantAssets';
+import { VideoProjectSchema } from '../../schemas/project.schema';
+import { projectAssets } from '../../application/assistant/projectProposals';
+import { resolveAssetPath } from '../filesystem/paths';
+import type { ChatGPTClient } from '../chatgpt/devkit/types';
+import { startRuntime } from '../codex/runtime';
+
+export interface CodexPluginOptions {
+  auth?: ChatGPTClient;
+  renderer?: PreviewRenderer;
+  launch?: typeof startRuntime;
+  directory?: string;
+}
 
 const ownerSchema = z.object({ conversationId: z.string().uuid(), epoch: z.string().uuid() });
 export function validLocalRequest(req: IncomingMessage, origin: string, capability: string, requireCapability = true): boolean {
@@ -36,25 +50,27 @@ async function requestBody(req: IncomingMessage): Promise<unknown> {
   catch { throw new AssistantError('invalid_json', 'JSON không hợp lệ.'); }
 }
 
-export function codexApiPlugin(): Plugin {
+export function codexApiPlugin(options: CodexPluginOptions = {}): Plugin {
   const capability = randomBytes(32).toString('base64url');
-  const directory = assistantDataDirectory();
+  const directory = options.directory ?? assistantDataDirectory();
   let loginUrl: string | null = null;
   let loginOperation: Promise<unknown> | null = null;
   let loginError: ReturnType<typeof safeAssistantError> | null = null;
-  const auth = createChatGPT({ appId: 'icegozi-video', appName: 'icegozi-video', storageDir: path.join(directory, 'auth'),
+  let bridgeEpoch = randomUUID();
+  const auth = options.auth ?? createChatGPT({ appId: 'icegozi-video', appName: 'icegozi-video', storageDir: path.join(directory, 'auth'),
     redirectPort: 0, sendHostId: true, credentialEncryption: windowsCredentialEncryption(),
     openBrowser: (url) => { loginUrl = url; },
   });
-  const renderer: PreviewRenderer = {
-    create: (project) => renderService.createJob(project, RenderProfile.Preview),
+  const renderer: PreviewRenderer = options.renderer ?? {
+    create: (project) => { validateAssistantAssets(VideoProjectSchema.parse(project)); return renderService.createJob(project, RenderProfile.Preview); },
     status: (id) => {
       const job = renderService.getJob(id);
       return job ? { status: job.status, progress: job.progress, outputReady: !!job.outputPath && fs.existsSync(job.outputPath) && fs.statSync(job.outputPath).size > 1000 } : null;
     },
     cancel: (id) => renderService.cancelJob(id),
+    missingAssets: (project) => projectAssets(project).filter((key) => !fs.existsSync(resolveAssetPath(key))),
   };
-  const service = new AssistantService(auth, renderer, directory);
+  const service = new AssistantService(auth, renderer, directory, options.launch, new ConversationStorage(path.join(directory, 'history')));
   let runtimeStatus: Awaited<ReturnType<typeof checkRuntime>> | undefined;
   const connections = new Set<ServerResponse>();
   let origin = 'http://127.0.0.1:3200';
@@ -68,7 +84,7 @@ export function codexApiPlugin(): Plugin {
     };
     runtimeStatus ??= await checkRuntime();
     const profiles = await auth.listProfiles().catch(() => []);
-    return { auth: safeAuth, profiles: profiles.map(({ id, label, status: profileStatus, sharing, pending }) => ({ id, label, status: profileStatus, sharing, pending })),
+    return { bridgeEpoch, auth: safeAuth, profiles: profiles.map(({ id, label, status: profileStatus, sharing, pending }) => ({ id, label, status: profileStatus, sharing, pending })),
       models: [], runtime: runtimeStatus, loginUrl };
   };
   const json = (res: ServerResponse, body: unknown, code = 200) => {
@@ -78,16 +94,19 @@ export function codexApiPlugin(): Plugin {
     res.end(JSON.stringify(body));
   };
   const closeStreams = () => { for (const response of connections) response.end(); connections.clear(); };
-  const reset = () => { service.reset(); closeStreams(); loginUrl = null; loginError = null; };
+  const reset = (clearHistory = true) => { bridgeEpoch = randomUUID(); if (clearHistory) service.reset(); else service.suspend(); closeStreams(); loginUrl = null; loginError = null; };
 
   return {
     name: 'icegozi-codex-api',
+    apply: 'serve',
     transformIndexHtml() { return [{ tag: 'meta', attrs: { name: 'icegozi-capability', content: capability }, injectTo: 'head' }]; },
     configureServer(server) {
       origin = `http://127.0.0.1:${server.config.server.port ?? 3200}`;
-      server.httpServer?.once('close', () => { auth.cancelSignIn(); reset(); });
+      server.httpServer?.once('close', () => { auth.cancelSignIn(); service.dispose(); closeStreams(); });
       server.middlewares.use(async (req, res, next) => {
-        const url = new URL(req.url ?? '/', origin);
+        let url: URL;
+        try { url = new URL(req.url ?? '/', origin); }
+        catch { json(res, { error: 'URL không hợp lệ.' }, 400); return; }
         // Guard the document carrying bootstrap capability and all local bridge endpoints.
         if (!validLocalRequest(req, origin, capability, false)) { json(res, { error: 'Local origin bị từ chối.' }, 403); return; }
         if (!url.pathname.startsWith('/api/codex/')) { next(); return; }
@@ -136,7 +155,7 @@ export function codexApiPlugin(): Plugin {
           if (url.pathname === '/api/codex/login') {
             const options = z.object({ newProfile: z.boolean().optional(), profileId: z.string().optional() }).strict().parse(body);
             if (loginOperation) throw new AssistantError('login_busy', 'Có attempt đăng nhập đang chờ.', 409);
-            reset();
+            reset(false);
             loginOperation = auth.signIn(options).catch((error: unknown) => { loginError = safeAssistantError(error); }).finally(() => { loginOperation = null; loginUrl = null; });
             json(res, { started: true }); return;
           }
@@ -144,7 +163,7 @@ export function codexApiPlugin(): Plugin {
           if (url.pathname === '/api/codex/logout') { reset(); await auth.disconnect(); json(res, await status()); return; }
           if (url.pathname === '/api/codex/profile') {
             const { profileId } = z.object({ profileId: z.string() }).strict().parse(body);
-            reset(); await auth.selectProfile(profileId); json(res, await status()); return;
+            reset(false); await auth.selectProfile(profileId); json(res, await status()); return;
           }
           if (url.pathname === '/api/codex/conversation') { json(res, await service.open(body)); return; }
           const owner = ownerSchema.parse(body);
@@ -160,6 +179,10 @@ export function codexApiPlugin(): Plugin {
           if (url.pathname === '/api/codex/proposal/dismiss') {
             const input = ownerSchema.extend({ proposalId: z.string().uuid() }).strict().parse(body);
             await service.dismiss(input.conversationId, input.epoch, input.proposalId); json(res, { dismissed: true }); return;
+          }
+          if (url.pathname === '/api/codex/proposal/apply') {
+            const input = ownerSchema.extend({ proposalId: z.string().uuid(), snapshot: z.unknown() }).strict().parse(body);
+            json(res, await service.consumeProposal(input.conversationId, input.epoch, input.proposalId, input.snapshot)); return;
           }
           if (url.pathname === '/api/codex/render') {
             const input = ownerSchema.extend({ requestId: z.string().uuid(), snapshot: z.unknown() }).strict().parse(body);
