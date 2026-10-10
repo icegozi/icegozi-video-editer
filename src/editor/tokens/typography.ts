@@ -1,19 +1,28 @@
 /**
- * Typography scale and font tokens for high-density enterprise editing.
+ * Typography scale and font tokens for Luminous Creative Studio.
+ * Section 4.2 Typographic Hierarchy.
  */
 export const TYPOGRAPHY_TOKENS = {
-  fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-  fontFamilyMono: 'JetBrains Mono, Menlo, Consolas, Monaco, "Courier New", monospace',
+  fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  fontFamilyMono: '"JetBrains Mono", Menlo, Consolas, Monaco, monospace',
 
   sizes: {
+    pageHeading: { fontSize: '20px', fontWeight: 600, lineHeight: '28px' },
+    panelTitle: { fontSize: '16px', fontWeight: 600, lineHeight: '24px' },
+    sectionTitle: { fontSize: '14px', fontWeight: 600, lineHeight: '20px' },
+    body: { fontSize: '14px', fontWeight: 400, lineHeight: '21px' },
+    bodyBold: { fontSize: '14px', fontWeight: 600, lineHeight: '21px' },
+    formLabel: { fontSize: '13px', fontWeight: 500, lineHeight: '20px' },
+    button: { fontSize: '13px', fontWeight: 500, lineHeight: '20px' },
+    metadata: { fontSize: '12px', fontWeight: 400, lineHeight: '18px' },
+    timecode: { fontSize: '12px', fontWeight: 500, lineHeight: '18px', fontVariantNumeric: 'tabular-nums' },
+
+    // Legacy aliases
     appTitle: { fontSize: '14px', fontWeight: 600, lineHeight: '18px' },
-    panelTitle: { fontSize: '12px', fontWeight: 600, lineHeight: '16px', letterSpacing: '0.04em' },
-    controlLabel: { fontSize: '11px', fontWeight: 500, lineHeight: '14px' },
-    body: { fontSize: '12px', fontWeight: 400, lineHeight: '16px' },
-    bodyBold: { fontSize: '12px', fontWeight: 600, lineHeight: '16px' },
-    button: { fontSize: '12px', fontWeight: 500, lineHeight: '16px' },
-    clipTitle: { fontSize: '11px', fontWeight: 500, lineHeight: '14px' },
-    timecode: { fontSize: '12px', fontWeight: 500, lineHeight: '16px', fontVariantNumeric: 'tabular-nums' },
-    meta: { fontSize: '10px', fontWeight: 400, lineHeight: '13px' },
+    controlLabel: { fontSize: '13px', fontWeight: 500, lineHeight: '20px' },
+    clipTitle: { fontSize: '12px', fontWeight: 500, lineHeight: '16px' },
+    meta: { fontSize: '12px', fontWeight: 400, lineHeight: '18px' },
   },
 } as const;
+
+export type TypographyTokens = typeof TYPOGRAPHY_TOKENS;

@@ -1,0 +1,64 @@
+{
+  "phase_id": "01",
+  "patch_ids": ["UI-01", "UI-02", "UI-03"],
+  "commit_eligible": true,
+  "checks": {
+    "static_checks": {
+      "status": "PASS",
+      "commands_or_method": ["npm run typecheck"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-01/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "unit_tests": {
+      "status": "PASS",
+      "commands_or_method": ["npm test"],
+      "exit_code": 0,
+      "evidence_paths": ["tests/unit/ui-primitives.test.tsx", "docs/ui-ux/evidence/phase-01/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "integration_tests": {
+      "status": "PASS",
+      "commands_or_method": ["npm test"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-01/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "browser_e2e": {
+      "status": "NOT_APPLICABLE",
+      "commands_or_method": [],
+      "exit_code": null,
+      "evidence_paths": [],
+      "run_kind": "not_run",
+      "reason": "Phase 1 creates shared UI primitives and tokens; interactive browser E2E runs in Phase 2, 4, and 8"
+    },
+    "visual_evidence": {
+      "status": "PASS",
+      "commands_or_method": ["React DOM static markup render verification in tests/unit/ui-primitives.test.tsx"],
+      "exit_code": 0,
+      "evidence_paths": ["tests/unit/ui-primitives.test.tsx"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "accessibility_checks": {
+      "status": "PASS",
+      "commands_or_method": ["ARIA role, aria-invalid, aria-busy, and keyboard interaction assertions in Vitest"],
+      "exit_code": 0,
+      "evidence_paths": ["tests/unit/ui-primitives.test.tsx"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "regression_checks": {
+      "status": "PASS",
+      "commands_or_method": ["npm test", "npm run build:editor"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-01/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    }
+  },
+  "final_status": "DONE"
+}

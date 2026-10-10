@@ -5,7 +5,7 @@
 
 | Phase | Patches | Commit SHA | Commit message | Evidence | Status | Screenshots |
 |---|---|---|---|---|---|---|
-| 00 | UI-00 | *(to be recorded post-commit)* | docs(ui): audit editor ux baseline | docs/ui-ux/evidence/phase-00/REPORT.md | DONE | docs/ui-ux/evidence/phase-00/screenshots/ |
+| 00 | UI-00 | 7ba7ba3 | docs(ui): audit editor ux baseline | docs/ui-ux/evidence/phase-00/REPORT.md | DONE | docs/ui-ux/evidence/phase-00/screenshots/ |
 | 01 | UI-01, UI-02, UI-03 | *(pending)* | refactor(ui): establish shared design system | docs/ui-ux/evidence/phase-01/REPORT.md | NOT_STARTED | docs/ui-ux/evidence/phase-01/screenshots/ |
 | 02 | UI-04, UI-05, UI-06 | *(pending)* | feat(ui): rebuild adaptive studio workspace | docs/ui-ux/evidence/phase-02/REPORT.md | NOT_STARTED | docs/ui-ux/evidence/phase-02/screenshots/ |
 | 03 | UI-07 | *(pending)* | refactor(ui): improve timeline editing experience | docs/ui-ux/evidence/phase-03/REPORT.md | NOT_STARTED | docs/ui-ux/evidence/phase-03/screenshots/ |

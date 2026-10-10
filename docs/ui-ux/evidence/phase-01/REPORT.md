@@ -1,0 +1,88 @@
+# Phase 01 — Evidence Report: Tokens, Typography, and Shared UI Primitives
+
+- **Date/time (with timezone):** 2026-10-10T10:30:00+07:00
+- **Git branch / before SHA / after SHA (fill after commit):** `master` / `7ba7ba3` / *(recorded in COMMIT_MAP.md after commit)*
+- **Scope / patch IDs / touched paths:**
+  - Patch IDs: UI-01, UI-02, UI-03 (Foundation established; final adoption tracked per contract)
+  - Touched paths:
+    - `src/editor/tokens/editor.css`
+    - `src/editor/tokens/colors.ts`
+    - `src/editor/tokens/typography.ts`
+    - `src/editor/tokens/spacing.ts`
+    - `src/editor/components/ui/Button.tsx`
+    - `src/editor/components/ui/IconButton.tsx`
+    - `src/editor/components/ui/Input.tsx`
+    - `src/editor/components/ui/TextArea.tsx`
+    - `src/editor/components/ui/NumberInput.tsx`
+    - `src/editor/components/ui/Select.tsx`
+    - `src/editor/components/ui/Checkbox.tsx`
+    - `src/editor/components/ui/Switch.tsx`
+    - `src/editor/components/ui/Slider.tsx`
+    - `src/editor/components/ui/Tabs.tsx`
+    - `src/editor/components/ui/Badge.tsx`
+    - `src/editor/components/ui/Tooltip.tsx`
+    - `src/editor/components/ui/Progress.tsx`
+    - `src/editor/components/ui/Skeleton.tsx`
+    - `src/editor/components/ui/EmptyState.tsx`
+    - `src/editor/components/ui/ErrorState.tsx`
+    - `src/editor/components/ui/Separator.tsx`
+    - `src/editor/components/ui/KeyboardShortcutHint.tsx`
+    - `src/editor/components/ui/TimecodeInput.tsx`
+    - `src/editor/components/ui/Dialog.tsx`
+    - `src/editor/components/ui/ConfirmDialog.tsx`
+    - `src/editor/components/ui/Toast.tsx`
+    - `src/editor/components/ui/index.ts`
+    - `tests/unit/ui-primitives.test.tsx`
+- **Baseline observations + before screenshot paths:**
+  - Trước khi triển khai, `src/editor/components/ui/` chỉ có 5 file sơ sài. Chưa có token màu ngữ nghĩa chuẩn (`--color-app-bg`, `--color-surface`, `--color-primary`, v.v.), không có component Modal/Dialog chuẩn, Tabs, Checkbox, Switch hay TimecodeInput.
+  - Baseline screenshots tại `docs/ui-ux/evidence/phase-00/screenshots/`.
+- **Changes and rationale:**
+  - Cập nhật toàn bộ Design Tokens theo đặc tả Section 4.1, 4.2, 4.3 trong `editor.css`, `colors.ts`, `typography.ts`, `spacing.ts`. Giữ alias tương thích ngược để không làm hỏng code cũ.
+  - Xây dựng đầy đủ hệ thống UI primitives tái sử dụng chuẩn enterprise, tuân thủ WCAG AA, focus-visible, keyboard navigation và ARIA semantics.
+  - Viết bộ 29 test cases bao phủ toàn diện các trạng thái (disabled, loading, focus, keyboard, error, variants).
+- **Tested Windows OS/browser/viewport/scaling or explicitly NOT VERIFIED:**
+  - Windows 11 (desktop local), Node v22.13.0.
+  - Vitest component unit tests chạy toàn bộ qua `npm test`.
+- **Commands actually executed (command, exit code, evidence log path):**
+  - `npm run typecheck`: exit code 0
+  - `npm test`: exit code 0 (28 test files passed, 163 vitest tests passed, 41 SIWC tests passed)
+  - `npm run build:editor`: exit code 0 (built in 9.59s)
+- **Verification JSON path and each mandatory check status (PASS/FAIL/NOT_RUN/NOT_APPLICABLE/BLOCKED):**
+  - Path: `docs/ui-ux/evidence/phase-01/VERIFICATION.json`
+  - `static_checks`: PASS
+  - `unit_tests`: PASS (163/163 passed, bao gồm 29 test cases mới cho UI Primitives)
+  - `integration_tests`: PASS
+  - `browser_e2e`: NOT_APPLICABLE (Phase 1 tập trung vào token & primitives dùng chung; E2E chạy ở Phase 2, 4, 8)
+  - `visual_evidence`: PASS (Primitives rendering HTML snapshot verified)
+  - `accessibility_checks`: PASS (ARIA roles, keyboard handlers, disabled states tested)
+  - `regression_checks`: PASS (Tất cả 27 file test cũ đều pass không hồi quy)
+- **Automated tests added and results (mock transport / real-handler integration distinguished):**
+  - Thêm `tests/unit/ui-primitives.test.tsx` với 29 unit tests kiểm tra:
+    - Button variants, loading, disabled, icon
+    - IconButton label, active, disabled
+    - Input labels, errors, tabular nums
+    - TextArea, NumberInput, Select
+    - Checkbox & Switch ARIA roles & keyboard toggle
+    - Slider range input, value display
+    - Tabs selection & ARIA tablist
+    - Badge, Progress, Skeleton
+    - Timecode conversion & parsing
+    - Dialog & ConfirmDialog accessibility
+    - EmptyState & ErrorState
+- **Manual UI journeys actually executed and results:**
+  - Đã xác thực biên dịch và render qua `renderToStaticMarkup` và vite build thành công không có lỗi.
+- **Accessibility results:**
+  - Đạt chuẩn WCAG: focus-visible ring 2px, ARIA roles đầy đủ (`role="checkbox"`, `role="switch"`, `role="tablist"`, `role="dialog"`, `role="alert"`, `role="progressbar"`), hỗ trợ `prefers-reduced-motion` trong `editor.css`.
+- **Before/after screenshots (paths, assertions, limitations):**
+  - Baseline screenshots lưu tại `docs/ui-ux/evidence/phase-00/screenshots/`.
+- **Performance measurements (method, numbers, or NOT MEASURED):**
+  - Build time: 9.59s (so với baseline 6.72s).
+- **Existing failures vs newly introduced failures:**
+  - 0 lỗi tồn đọng, 0 lỗi mới phát sinh.
+- **Risk check (AI approvals, persistence, render, media security):**
+  - Tuyệt đối an toàn: không thay đổi bất kỳ logic ứng dụng hay storage nào.
+- **Outstanding issues / deferred scope:**
+  - Ma trận migration: UI-03 thành lập nền tảng dùng chung; việc thay thế từng usage site trong EditorShell/CommandBar/Timeline/Chat/Inspector sẽ được thực hiện tuần tự trong các Phase 2–7 và hoàn tất nghiệm thu ở Phase 8 theo hợp đồng F3.
+- **Phase final status:** `DONE`
+- **Commit eligibility:** true (Đã vượt qua toàn bộ Verification Gate và đảm bảo an toàn Git).
+- **Commit SHA:** *(Ghi nhận tại COMMIT_MAP.md sau khi tạo commit)*

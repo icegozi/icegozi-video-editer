@@ -12,8 +12,8 @@
 
 | Phase | Patch IDs | Mục tiêu | Trạng thái | Commit SHA | Ghi chú & Rào cản |
 |---|---|---|---|---|---|
-| **Phase 0** | **UI-00** | Source audit and baseline verification | `DONE` | *(Pending commit)* | Typecheck, tests, build & 6 screenshots verified |
-| **Phase 1** | **UI-01, UI-02, UI-03** | Tokens, typography, shared component library | `NOT_STARTED` | — | Chờ thực thi |
+| **Phase 0** | **UI-00** | Source audit and baseline verification | `DONE` | `7ba7ba3` | Typecheck, tests, build & 6 screenshots verified |
+| **Phase 1** | **UI-01, UI-02, UI-03** | Tokens, typography, shared component library | `IN_PROGRESS` | — | Đang thực thi Phase 1 |
 | **Phase 2** | **UI-04, UI-05, UI-06** | Shell, adaptive focus modes, dark stage chrome | `NOT_STARTED` | — | Phụ thuộc Phase 1 |
 | **Phase 3** | **UI-07** | Professional timeline usability & interactions | `NOT_STARTED` | — | Phụ thuộc Phase 2 |
 | **Phase 4** | **UI-08, UI-09** | AI chat workspace & proposal approval UX | `NOT_STARTED` | — | Phụ thuộc Phase 2 |

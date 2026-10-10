@@ -1,8 +1,9 @@
 /**
- * Spacing, control heights, border radii, and z-index tokens.
+ * Spacing, control sizing, panel constraints, and z-index tokens.
+ * Sections 4.3 and 4.4 Responsive Desktop Constraints.
  */
 export const SPACING_TOKENS = {
-  // 4px base grid
+  // 4.3 Spacing scale: 4/8/12/16/20/24/32px
   space: {
     1: '4px',
     2: '8px',
@@ -13,42 +14,62 @@ export const SPACING_TOKENS = {
     8: '32px',
   },
 
-  // Control and panel heights
+  // Common control heights
   heights: {
-    commandBar: 52,
-    panelHeader: 36,
+    header: 56,
+    commandBar: 44,
+    panelHeader: 38,
     canvasToolbar: 36,
-    transportBar: 40,
+    transportBar: 42,
     timelineToolbar: 36,
     timelineRuler: 28,
     videoTrack: 52,
     audioTrack: 52,
     clipHeight: 44,
-    inputMd: 32,
-    buttonMd: 32,
-    buttonSm: 28,
-    buttonExport: 36,
+    controlSm: 32,
+    controlMd: 36,
+    controlLg: 40,
+    // Legacy
+    inputMd: 36,
+    buttonMd: 36,
+    buttonSm: 32,
+    buttonExport: 40,
   },
 
-  // Panel widths
+  // 4.4 Panel layout widths & constraints
   widths: {
-    assetPanelDefault: 280,
-    assetPanelMin: 220,
-    assetPanelMax: 420,
+    aiStudioDefault: 380,
+    aiStudioMin: 280,
+    aiStudioMax: 480,
+    assetPanelDefault: 300,
+    assetPanelMin: 240,
+    assetPanelMax: 440,
     inspectorDefault: 320,
-    inspectorMin: 280,
+    inspectorMin: 260,
     inspectorMax: 480,
+    navigationRail: 56,
     trackHeader: 200,
   },
 
-  // Border radii
+  // Timeline height per mode
+  timelineHeights: {
+    aiFocus: 110,
+    editFocus: 280,
+    previewFocus: 40,
+  },
+
+  // 4.3 Border radii
   radius: {
-    controlSm: '4px',
-    button: '6px',
-    input: '6px',
-    panel: '8px',
+    controlSm: '6px',
+    control: '8px',
+    button: '8px',
+    input: '8px',
+    card: '12px',
+    panel: '14px',
+    dialog: '16px',
     popover: '8px',
-    clip: '4px',
+    clip: '6px',
+    full: '9999px',
   },
 
   // Z-Index Token Hierarchy
@@ -61,6 +82,17 @@ export const SPACING_TOKENS = {
     stickyHeaders: 50,
     popover: 100,
     modal: 200,
+    toast: 250,
     tooltip: 300,
   },
+
+  // Motion
+  motion: {
+    fast: '120ms',
+    normal: '180ms',
+    deliberate: '240ms',
+    ease: 'cubic-bezier(0.16, 1, 0.3, 1)',
+  },
 } as const;
+
+export type SpacingTokens = typeof SPACING_TOKENS;
