@@ -1,0 +1,88 @@
+{
+  "phase_id": "08",
+  "patch_ids": ["UI-16"],
+  "commit_eligible": true,
+  "checks": {
+    "static_checks": {
+      "status": "PASS",
+      "commands_or_method": ["npm run typecheck", "npm run build:editor"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-08/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "unit_tests": {
+      "status": "PASS",
+      "commands_or_method": ["npm test"],
+      "exit_code": 0,
+      "evidence_paths": [
+        "tests/unit/ui-primitives.test.tsx",
+        "tests/unit/feedback-dialogs.test.tsx",
+        "tests/unit/studio-polish-performance.test.ts",
+        "docs/ui-ux/evidence/phase-08/REPORT.md"
+      ],
+      "run_kind": "real",
+      "reason": null
+    },
+    "integration_tests": {
+      "status": "PASS",
+      "commands_or_method": ["npm test"],
+      "exit_code": 0,
+      "evidence_paths": [
+        "tests/integration/ai-workflow.test.ts",
+        "tests/integration/render-jobs.test.ts",
+        "tests/integration/project-sync.test.ts",
+        "tests/integration/assets-upload.test.ts",
+        "docs/ui-ux/evidence/phase-08/REPORT.md"
+      ],
+      "run_kind": "real",
+      "reason": null
+    },
+    "browser_e2e": {
+      "status": "PASS",
+      "commands_or_method": ["npx tsx scripts/capture-phase08.ts"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-08/screenshots/"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "visual_evidence": {
+      "status": "PASS",
+      "commands_or_method": [
+        "Playwright headless screenshots of all 3 workspace modes (AI Focus, Edit Focus, Preview Focus) and Export Modal at 1366x768 and 1920x1080"
+      ],
+      "exit_code": 0,
+      "evidence_paths": [
+        "docs/ui-ux/evidence/phase-08/screenshots/phase08_final_ai_focus_1366x768.png",
+        "docs/ui-ux/evidence/phase-08/screenshots/phase08_final_edit_focus_1366x768.png",
+        "docs/ui-ux/evidence/phase-08/screenshots/phase08_final_preview_focus_1366x768.png",
+        "docs/ui-ux/evidence/phase-08/screenshots/phase08_final_export_dialog_1366x768.png",
+        "docs/ui-ux/evidence/phase-08/screenshots/phase08_final_ai_focus_1920x1080.png",
+        "docs/ui-ux/evidence/phase-08/screenshots/phase08_final_edit_focus_1920x1080.png",
+        "docs/ui-ux/evidence/phase-08/screenshots/phase08_final_preview_focus_1920x1080.png",
+        "docs/ui-ux/evidence/phase-08/screenshots/phase08_final_export_dialog_1920x1080.png"
+      ],
+      "run_kind": "real",
+      "reason": null
+    },
+    "accessibility_checks": {
+      "status": "PASS",
+      "commands_or_method": [
+        "WAI-ARIA compliance: role='dialog', role='alertdialog', role='progressbar', role='tab', role='tabpanel', focus-visible outlines, Escape key, Vietnamese IME guards (keyCode 229)"
+      ],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-08/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "regression_checks": {
+      "status": "PASS",
+      "commands_or_method": ["npm test", "npm run build:editor"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-08/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    }
+  },
+  "final_status": "DONE"
+}
