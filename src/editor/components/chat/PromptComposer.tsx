@@ -109,7 +109,7 @@ export const PromptComposer: React.FC<PromptComposerProps> = ({
             <IconButton
               icon={<Square size={13} fill="currentColor" />}
               label="Dừng tác vụ đang chạy"
-              style={{ color: 'var(--danger)' }}
+              style={{ color: 'var(--color-danger, #D92D20)' }}
               size="sm"
               onClick={handleButtonClick}
             />
@@ -117,7 +117,7 @@ export const PromptComposer: React.FC<PromptComposerProps> = ({
             <IconButton
               icon={<Send size={13} />}
               label="Gửi yêu cầu (Enter)"
-              style={{ color: 'var(--accent)' }}
+              style={{ color: 'var(--color-primary, #3568E8)' }}
               size="sm"
               disabled={!canSubmit}
               onClick={handleButtonClick}
@@ -133,7 +133,7 @@ export const PromptComposer: React.FC<PromptComposerProps> = ({
           justifyContent: 'space-between',
           marginTop: '6px',
           fontSize: '11px',
-          color: 'var(--color-text-muted, #64748B)',
+          color: 'var(--color-text-secondary, #52627A)',
         }}
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>

@@ -25,10 +25,10 @@ export const ProposalCard: React.FC<ProposalCardProps> = ({
       style={{
         margin: '10px 0',
         padding: '12px',
-        backgroundColor: isApplied ? 'var(--color-surface, #FFFFFF)' : 'var(--color-brand-subtle, #EEF3FF)',
-        border: `1px solid ${isApplied ? 'var(--color-success, #167A4A)' : 'var(--color-brand, #3568E8)'}`,
-        borderRadius: '8px',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+        backgroundColor: isApplied ? 'var(--color-surface, #FFFFFF)' : 'var(--color-primary-subtle, #EEF3FF)',
+        border: `1px solid ${isApplied ? 'var(--color-success, #167A4A)' : 'var(--color-primary, #3568E8)'}`,
+        borderRadius: 'var(--radius-card, 12px)',
+        boxShadow: 'var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.05))',
       }}
       data-testid="proposal-card"
     >
@@ -41,8 +41,8 @@ export const ProposalCard: React.FC<ProposalCardProps> = ({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Layers size={14} color={isApplied ? 'var(--color-success)' : 'var(--color-brand)'} />
-          <strong style={{ fontSize: '13px', color: 'var(--color-text-primary, #0F172A)' }}>
+          <Layers size={14} color={isApplied ? 'var(--color-success, #167A4A)' : 'var(--color-primary, #3568E8)'} />
+          <strong style={{ fontSize: '13px', color: 'var(--color-text-primary, #17233B)' }}>
             Kế hoạch chỉnh sửa
           </strong>
         </div>
@@ -53,8 +53,8 @@ export const ProposalCard: React.FC<ProposalCardProps> = ({
             padding: '2px 8px',
             borderRadius: '10px',
             fontWeight: 600,
-            backgroundColor: isApplied ? '#DCFCE7' : '#DBEAFE',
-            color: isApplied ? '#166534' : '#1E40AF',
+            backgroundColor: isApplied ? 'var(--color-success-subtle, #ECFDF5)' : 'var(--color-primary-subtle, #EEF3FF)',
+            color: isApplied ? 'var(--color-success, #167A4A)' : 'var(--color-primary, #3568E8)',
           }}
         >
           {isApplied ? '✓ Đã áp dụng' : `Revision ${proposal.baseRevision}`}
@@ -65,7 +65,7 @@ export const ProposalCard: React.FC<ProposalCardProps> = ({
         style={{
           fontSize: '13px',
           lineHeight: '1.45',
-          color: 'var(--color-text-primary, #0F172A)',
+          color: 'var(--color-text-primary, #17233B)',
           margin: '0 0 8px 0',
         }}
       >
@@ -82,7 +82,7 @@ export const ProposalCard: React.FC<ProposalCardProps> = ({
           marginBottom: '8px',
         }}
       >
-        <span style={{ fontSize: '11px', color: 'var(--color-text-muted, #64748B)' }}>
+        <span style={{ fontSize: '11px', color: 'var(--color-text-secondary, #52627A)' }}>
           Phạm vi:
         </span>
         {proposal.affected.length > 0 ? (
@@ -92,17 +92,17 @@ export const ProposalCard: React.FC<ProposalCardProps> = ({
               style={{
                 fontSize: '10px',
                 padding: '1px 6px',
-                borderRadius: '4px',
+                borderRadius: 'var(--radius-controlSm, 6px)',
                 backgroundColor: 'var(--color-surface, #FFFFFF)',
-                border: '1px solid var(--color-border-default, #CBD5E1)',
-                color: 'var(--color-text-secondary, #475569)',
+                border: '1px solid var(--color-border-subtle, #E2E8F0)',
+                color: 'var(--color-text-secondary, #52627A)',
               }}
             >
               {id}
             </span>
           ))
         ) : (
-          <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
+          <span style={{ fontSize: '11px', color: 'var(--color-text-secondary, #52627A)' }}>
             Cập nhật toàn bộ {proposal.candidate.scenes.length} scene
           </span>
         )}
@@ -140,7 +140,7 @@ export const ProposalCard: React.FC<ProposalCardProps> = ({
           background: 'none',
           border: 'none',
           padding: 0,
-          color: 'var(--color-brand, #3568E8)',
+          color: 'var(--color-primary, #3568E8)',
           fontSize: '11px',
           fontWeight: 500,
           cursor: 'pointer',
@@ -160,12 +160,12 @@ export const ProposalCard: React.FC<ProposalCardProps> = ({
             maxHeight: '160px',
             overflowY: 'auto',
             padding: '8px',
-            backgroundColor: '#0F172A',
+            backgroundColor: 'var(--color-stage, #0F172A)',
             color: '#E2E8F0',
             fontSize: '11px',
-            borderRadius: '6px',
+            borderRadius: 'var(--radius-controlSm, 6px)',
             marginBottom: '8px',
-            fontFamily: 'monospace',
+            fontFamily: 'var(--font-mono, monospace)',
           }}
         >
           {JSON.stringify(proposal.candidate, null, 2)}

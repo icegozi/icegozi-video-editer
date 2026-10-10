@@ -201,13 +201,13 @@ export const AiChatPanel: React.FC = () => {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Sparkles size={16} color="var(--color-brand, #3568E8)" />
+            <Sparkles size={16} color="var(--color-primary, #3568E8)" />
             <h2
               style={{
                 margin: 0,
                 fontSize: '13px',
                 fontWeight: 600,
-                color: 'var(--color-text-primary, #0F172A)',
+                color: 'var(--color-text-primary, #17233B)',
               }}
             >
               AI Studio · Codex
@@ -421,7 +421,7 @@ export const AiChatPanel: React.FC = () => {
               target="_blank"
               rel="noreferrer"
               style={{
-                color: 'var(--color-brand, #3568E8)',
+                color: 'var(--color-primary, #3568E8)',
                 fontWeight: 600,
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -482,8 +482,8 @@ export const AiChatPanel: React.FC = () => {
                 width: '36px',
                 height: '36px',
                 borderRadius: '50%',
-                backgroundColor: 'var(--color-brand-subtle, #EEF3FF)',
-                color: 'var(--color-brand, #3568E8)',
+                backgroundColor: 'var(--color-primary-subtle, #EEF3FF)',
+                color: 'var(--color-primary, #3568E8)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -537,8 +537,8 @@ export const AiChatPanel: React.FC = () => {
                     textAlign: 'left',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--color-brand, #3568E8)';
-                    e.currentTarget.style.backgroundColor = 'var(--color-brand-subtle, #EEF3FF)';
+                    e.currentTarget.style.borderColor = 'var(--color-primary, #3568E8)';
+                    e.currentTarget.style.backgroundColor = 'var(--color-primary-subtle, #EEF3FF)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.borderColor = 'var(--color-border-subtle, #E2E8F0)';
@@ -588,10 +588,10 @@ export const AiChatPanel: React.FC = () => {
                   height: '24px',
                   borderRadius: '50%',
                   backgroundColor: isUser
-                    ? 'var(--color-brand, #3568E8)'
+                    ? 'var(--color-primary, #3568E8)'
                     : 'var(--color-surface, #FFFFFF)',
-                  color: isUser ? '#FFFFFF' : 'var(--color-brand, #3568E8)',
-                  border: isUser ? 'none' : '1px solid var(--color-border-default, #CBD5E1)',
+                  color: isUser ? '#FFFFFF' : 'var(--color-primary, #3568E8)',
+                  border: isUser ? 'none' : '1px solid var(--color-border-subtle, #E2E8F0)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -610,9 +610,9 @@ export const AiChatPanel: React.FC = () => {
                   fontSize: '13px',
                   lineHeight: '1.45',
                   backgroundColor: isUser
-                    ? 'var(--color-brand, #3568E8)'
+                    ? 'var(--color-primary, #3568E8)'
                     : 'var(--color-surface, #FFFFFF)',
-                  color: isUser ? '#FFFFFF' : 'var(--color-text-primary, #0F172A)',
+                  color: isUser ? '#FFFFFF' : 'var(--color-text-primary, #17233B)',
                   border: isUser ? 'none' : '1px solid var(--color-border-subtle, #E2E8F0)',
                   boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
                   whiteSpace: 'pre-wrap',
@@ -634,8 +634,8 @@ export const AiChatPanel: React.FC = () => {
               gap: '8px',
               padding: '8px 12px',
               borderRadius: '6px',
-              backgroundColor: 'var(--color-brand-subtle, #EEF3FF)',
-              color: 'var(--color-brand, #3568E8)',
+              backgroundColor: 'var(--color-primary-subtle, #EEF3FF)',
+              color: 'var(--color-primary, #3568E8)',
               fontSize: '12px',
             }}
           >
@@ -687,7 +687,7 @@ export const AiChatPanel: React.FC = () => {
               }}
             >
               <strong style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Video size={13} color="var(--color-brand)" /> Preview MP4
+                <Video size={13} color="var(--color-primary, #3568E8)" /> Preview MP4
               </strong>
               <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
                 {job.status} ({job.progress}%)

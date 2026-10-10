@@ -15,8 +15,8 @@
 | **Phase 0** | **UI-00** | Source audit and baseline verification | `DONE` | `7ba7ba3` | Typecheck, tests, build & 6 screenshots verified |
 | **Phase 1** | **UI-01, UI-02, UI-03** | Tokens, typography, shared component library | `DONE` | `5113e50` | 29 UI primitive unit tests pass, typecheck/build clean |
 | **Phase 2** | **UI-04, UI-05, UI-06** | Shell, adaptive focus modes, dark stage chrome | `DONE` | `8bc7952` | 6 screenshots verified, invariants preserved, mode switching clean |
-| **Phase 3** | **UI-07** | Professional timeline usability & interactions | `DONE` | *(committing)* | 4 screenshots verified, slider/headers/ruler/clips styled with tokens |
-| **Phase 4** | **UI-08, UI-09** | AI chat workspace & proposal approval UX | `NOT_STARTED` | — | Phụ thuộc Phase 2 |
+| **Phase 3** | **UI-07** | Professional timeline usability & interactions | `DONE` | `2c4543a` | 4 screenshots verified, slider/headers/ruler/clips styled with tokens |
+| **Phase 4** | **UI-08, UI-09** | AI chat workspace & proposal approval UX | `DONE` | *(committing)* | 4 screenshots verified, IME guard verified, F4 real handler tested |
 | **Phase 5** | **UI-10, UI-11** | Assets & scenes browser, contextual inspector | `NOT_STARTED` | — | Phụ thuộc Phase 2 |
 | **Phase 6** | **UI-12, UI-13** | Feedback states, dialogs, a11y & keyboard | `NOT_STARTED` | — | Phụ thuộc Phase 3, 4, 5 |
 | **Phase 7** | **UI-14, UI-15** | Brand touch, microinteractions & performance | `NOT_STARTED` | — | Phụ thuộc Phase 6 |

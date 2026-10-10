@@ -50,9 +50,9 @@ export const ContextChipsBar: React.FC = () => {
             alignItems: 'center',
             gap: '4px',
             padding: '2px 8px',
-            backgroundColor: 'var(--color-brand-subtle, #EEF3FF)',
-            color: 'var(--color-brand, #3568E8)',
-            border: '1px solid var(--color-border-default, #CBD5E1)',
+            backgroundColor: 'var(--color-primary-subtle, #EEF3FF)',
+            color: 'var(--color-primary, #3568E8)',
+            border: '1px solid var(--color-border-subtle, #CBD5E1)',
             borderRadius: '12px',
             fontWeight: 500,
           }}
@@ -68,7 +68,7 @@ export const ContextChipsBar: React.FC = () => {
               border: 'none',
               padding: 0,
               cursor: 'pointer',
-              color: 'var(--color-brand, #3568E8)',
+              color: 'var(--color-primary, #3568E8)',
               display: 'inline-flex',
               alignItems: 'center',
             }}

@@ -1,0 +1,76 @@
+{
+  "phase_id": "04",
+  "patch_ids": ["UI-08", "UI-09"],
+  "commit_eligible": true,
+  "checks": {
+    "static_checks": {
+      "status": "PASS",
+      "commands_or_method": ["npm run typecheck"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-04/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "unit_tests": {
+      "status": "PASS",
+      "commands_or_method": ["npm test"],
+      "exit_code": 0,
+      "evidence_paths": [
+        "tests/unit/chat-composer.test.ts",
+        "tests/unit/assistant-proposals.test.ts",
+        "docs/ui-ux/evidence/phase-04/REPORT.md"
+      ],
+      "run_kind": "real",
+      "reason": null
+    },
+    "integration_tests": {
+      "status": "PASS",
+      "commands_or_method": ["npm test"],
+      "exit_code": 0,
+      "evidence_paths": [
+        "tests/integration/ai-workflow.test.ts",
+        "docs/ui-ux/evidence/phase-04/REPORT.md"
+      ],
+      "run_kind": "real",
+      "reason": null
+    },
+    "browser_e2e": {
+      "status": "PASS",
+      "commands_or_method": ["npx tsx scripts/capture-phase04.ts"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-04/screenshots/"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "visual_evidence": {
+      "status": "PASS",
+      "commands_or_method": ["Playwright headless screenshots of AI Studio workspace and context chips at 1366x768 and 1920x1080"],
+      "exit_code": 0,
+      "evidence_paths": [
+        "docs/ui-ux/evidence/phase-04/screenshots/phase04_ai_workspace_1366x768.png",
+        "docs/ui-ux/evidence/phase-04/screenshots/phase04_ai_with_context_1366x768.png",
+        "docs/ui-ux/evidence/phase-04/screenshots/phase04_ai_workspace_1920x1080.png",
+        "docs/ui-ux/evidence/phase-04/screenshots/phase04_ai_with_context_1920x1080.png"
+      ],
+      "run_kind": "real",
+      "reason": null
+    },
+    "accessibility_checks": {
+      "status": "PASS",
+      "commands_or_method": ["Vietnamese IME composition keyboard guard (keyCode 229 & isComposing), textarea aria-labels, button tooltips"],
+      "exit_code": 0,
+      "evidence_paths": ["src/editor/components/chat/PromptComposer.tsx", "src/editor/components/chat/ProposalCard.tsx"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "regression_checks": {
+      "status": "PASS",
+      "commands_or_method": ["npm test (all 171 vitest + 41 siwc pass)", "npm run build:editor"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-04/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    }
+  },
+  "final_status": "DONE"
+}
