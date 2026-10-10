@@ -6,11 +6,15 @@ import { JsonlClient, type RpcId, type RpcMessage } from '../../infrastructure/c
 import { startRuntime } from '../../infrastructure/codex/runtime';
 import { AssistantError, safeAssistantError } from './errors';
 import { projectAssets, projectFingerprint, validateCandidate, validateProposal } from './projectProposals';
-import { SnapshotSchema, type ProjectSnapshot, type AssistantConversation, type AssistantEvent, type AssistantRender, type ProjectProposal } from '../../shared/types/assistant';
-import { ProposalSchema } from '../../shared/types/assistant';
+import { SnapshotSchema, type ProjectSnapshot, type AssistantConversation, type AssistantEvent, type AssistantRender, type ProjectProposal } from './assistant.contracts';
+import { ProposalSchema } from './assistant.contracts';
 import { videoTools, EDITOR_TOOLSET_VERSION } from './editorTools';
 import { editorCapabilities, videoAssistantInstructions, EditableProjectSchema } from './editorCapabilities';
 import { listVideoSkills, readVideoSkill } from './videoSkills';
+import type { SceneGenerationService } from '../scene-generation/sceneGenerationService';
+import type { GenerationOwner } from '../scene-generation/generation.contracts';
+import type { ProposalLease } from './assistant.contracts';
+import { validateProjectSnapshot } from './projectSnapshot';
 export { videoTools } from './editorTools';
 
 export interface PreviewRenderer {
@@ -39,30 +43,23 @@ interface Conversation {
   stopping?: Promise<void>;
 }
 
-const safeSnapshot = (raw: unknown): ProjectSnapshot => {
-  const snapshot = SnapshotSchema.parse(raw);
-  if (snapshot.project.scenes.length > 500 || (snapshot.project.audioTracks?.length ?? 0) > 100 || (snapshot.project.subtitles?.length ?? 0) > 2000) {
-    throw new AssistantError('context_large', 'Project quá lớn cho MVP. Giảm số scene/track trước khi gửi.');
-  }
-  if (Buffer.byteLength(JSON.stringify(snapshot)) > 256 * 1024) throw new AssistantError('context_large', 'Snapshot quá lớn cho MVP.');
-  if (snapshot.project.scenes.some((s) => s.type === 'composition')) throw new AssistantError('composition_scope', 'MVP chỉ hỗ trợ scene text/formula/image/video; composition với props tùy ý cần sandbox riêng.');
-  for (const src of projectAssets(snapshot.project)) {
-    // This boundary accepts only public asset keys, never OS paths or remote URLs.
-    if (!/^(?:assets\/)?[a-zA-Z0-9_\-./ ]+$/.test(src) || src.split('/').some((part) => part === '..' || part.startsWith('.')) || src.includes('//')) {
-      throw new AssistantError('asset_path', 'Chỉ cho phép asset local thuộc public/assets; không gửi đường dẫn máy hoặc URL ngoài.');
-    }
-  }
-  return structuredClone(snapshot);
-};
-
 export class AssistantService {
+  private proposalLeases = new Map<string, { owner: string; proposalId: string; lease: ProposalLease }>();
+  private appliedLeases = new Map<string, string>();
   private conversations = new Map<string, Conversation>();
   private generation = 0;
   private persistenceTimer?: ReturnType<typeof setTimeout>;
   constructor(private readonly auth: ChatGPTClient, private readonly renderer: PreviewRenderer,
     private readonly directory: string,
     private readonly launch: typeof startRuntime = startRuntime,
-    private readonly persistence?: { read(): unknown; write(value: unknown): void }) {
+    private readonly persistence?: { read(): unknown; write(value: unknown): void },
+    public readonly sceneGeneration?: SceneGenerationService) {
+    sceneGeneration?.subscribe(() => {
+      for (const conversation of this.conversations.values()) {
+        conversation.view.generationVersion = (conversation.view.generationVersion ?? 0) + 1;
+        this.emit(conversation);
+      }
+    });
     if (!persistence) return;
     try {
       const entries = z.array(z.object({ profileId: z.string(), snapshot: SnapshotSchema, threadId: z.string().optional(), toolsetVersion: z.string().max(100).optional(),
@@ -74,7 +71,7 @@ export class AssistantService {
         const view: AssistantConversation = { ...entry.view, epoch: randomUUID(), approvals: [], renders: entry.view.renders.map((r) => ({ ...r, downloadUrl: null })) };
         view.proposals = view.proposals.map((p) => ({ ...p, epoch: view.epoch }));
         if (view.status === 'running') { view.status = 'interrupted'; view.error = 'Server đã khởi động lại. Tác vụ cũ không tự phát lại.'; }
-        this.conversations.set(view.id, { ...entry, snapshot: safeSnapshot(entry.snapshot), view, events: [], sequence: 0, listeners: new Set(), invocations: new Map(), requests: new Set(view.messages.filter((m) => m.role === 'user').map((m) => m.id)), terminalTurns: new Set(), pending: new Map() });
+        this.conversations.set(view.id, { ...entry, snapshot: validateProjectSnapshot(entry.snapshot), view, events: [], sequence: 0, listeners: new Set(), invocations: new Map(), requests: new Set(view.messages.filter((m) => m.role === 'user').map((m) => m.id)), terminalTurns: new Set(), pending: new Map() });
       }
     } catch { this.conversations.clear(); }
   }
@@ -85,7 +82,7 @@ export class AssistantService {
   }
 
   async open(raw: unknown): Promise<AssistantConversation> {
-    const snapshot = safeSnapshot(raw);
+    const snapshot = validateProjectSnapshot(raw);
     const auth = await this.auth.getSession();
     const profileId = auth.profileId ?? 'disconnected';
     let conversation = [...this.conversations.values()].find((entry) => entry.profileId === profileId && entry.view.projectId === snapshot.project.id);
@@ -143,7 +140,7 @@ export class AssistantService {
     if (conversation.requests.has(requestId)) return structuredClone(conversation.view);
     if (conversation.view.status === 'running') throw new AssistantError('turn_busy', 'Có tác vụ đang chạy. Dừng hoặc chờ hoàn tất.', 409);
     if (conversation.requests.size >= 200 || conversation.view.messages.length >= 200) throw new AssistantError('history_full', 'Hội thoại đã đạt giới hạn. Đăng xuất để bắt đầu phiên mới.');
-    const snapshot = safeSnapshot(rawSnapshot);
+    const snapshot = validateProjectSnapshot(rawSnapshot);
     if (snapshot.project.id !== conversation.view.projectId) throw new AssistantError('project_changed', 'Project đã thay đổi.', 409);
     const generation = this.generation;
     conversation.requests.add(requestId);
@@ -299,11 +296,20 @@ export class AssistantService {
   }
   private async tool(conversation: Conversation, name: string, input: unknown, rpcId: RpcId): Promise<unknown> {
     const epoch = conversation.view.epoch;
+    const turnId = conversation.turnId;
+    const toolSnapshot = conversation.snapshot;
+    const active = () => {
+      this.assertCurrent(conversation, epoch);
+      if (conversation.view.status !== 'running' || conversation.turnId !== turnId || conversation.snapshot !== toolSnapshot) throw new AssistantError('turn_changed', 'Tác vụ đã đổi hoặc dừng.', 409);
+    };
     await this.owned(conversation.view.id, epoch);
-    this.assertCurrent(conversation, epoch);
+    active();
     conversation.view.progress = `Công cụ: ${name}`;
     this.emit(conversation);
-    if (name === 'get_editor_capabilities') { z.object({}).strict().parse(input); return editorCapabilities(); }
+    if (name === 'get_editor_capabilities') { z.object({}).strict().parse(input); return editorCapabilities(this.sceneGeneration ? await this.sceneGeneration.capabilities(this.generationOwner(conversation)) : undefined); }
+    if (['get_scene_generation_capabilities', 'list_scene_templates', 'plan_scene_generation', 'request_scene_generation', 'get_scene_generation_status', 'cancel_scene_generation', 'list_registered_assets'].includes(name)) {
+      return this.generationOperation(conversation.view.id, epoch, name, input, undefined, turnId);
+    }
     if (name === 'list_video_skills') { z.object({}).strict().parse(input); return listVideoSkills(); }
     if (name === 'read_video_skill') {
       const { skillId } = z.object({ skillId: z.string().max(64) }).strict().parse(input);
@@ -312,15 +318,19 @@ export class AssistantService {
     if (name === 'get_project_context') {
       z.object({}).strict().parse(input);
       const { metadata: _metadata, ...project } = conversation.snapshot.project;
-      return { ...conversation.snapshot, project, fingerprint: projectFingerprint(conversation.snapshot.project), projectId: project.id, assets: projectAssets(project), missingAssets: this.renderer.missingAssets?.(project) ?? [],
+      return { ...conversation.snapshot, project, fingerprint: projectFingerprint(conversation.snapshot.project), projectId: project.id, assets: projectAssets(project),
+        assetManifest: this.sceneGeneration ? await this.sceneGeneration.assets(this.generationOwner(conversation)) : [], missingAssets: this.renderer.missingAssets?.(project) ?? [],
         recentMessages: conversation.view.messages.slice(-8).map(({ role, text }) => ({ role, text: text.slice(0, 2000) })) };
     }
     if (name === 'list_project_assets') { z.object({}).strict().parse(input); return projectAssets(conversation.snapshot.project); }
     if (name === 'validate_project_change') {
       const { candidate } = z.object({ candidate: z.record(z.string(), z.unknown()) }).strict().parse(input);
       try {
-        const validated = validateCandidate(conversation.snapshot.project, EditableProjectSchema.parse({ ...candidate, metadata: conversation.snapshot.project.metadata }));
-        safeSnapshot({ ...conversation.snapshot, project: validated });
+        const editable = EditableProjectSchema.parse({ ...candidate, metadata: toolSnapshot.project.metadata });
+        const validated = validateCandidate(toolSnapshot.project, editable,
+          this.sceneGeneration ? await this.sceneGeneration.assetPolicy(this.generationOwner(conversation), projectAssets(editable)) : undefined);
+        active();
+        validateProjectSnapshot({ ...conversation.snapshot, project: validated });
         return { valid: true };
       } catch (error) {
         return { valid: false, errors: error instanceof z.ZodError
@@ -330,8 +340,11 @@ export class AssistantService {
     }
     if (name === 'propose_project_change') {
       const proposalInput = z.object({ summary: z.string().min(1).max(2000), candidate: z.record(z.string(), z.unknown()) }).strict().parse(input);
-      const candidate = validateCandidate(conversation.snapshot.project, EditableProjectSchema.parse({ ...proposalInput.candidate, metadata: conversation.snapshot.project.metadata }));
-      safeSnapshot({ ...conversation.snapshot, project: candidate });
+      const editable = EditableProjectSchema.parse({ ...proposalInput.candidate, metadata: toolSnapshot.project.metadata });
+      const candidate = validateCandidate(toolSnapshot.project, editable,
+        this.sceneGeneration ? await this.sceneGeneration.assetPolicy(this.generationOwner(conversation), projectAssets(editable)) : undefined);
+      active();
+      validateProjectSnapshot({ ...conversation.snapshot, project: candidate });
       if (conversation.view.proposals.length >= 4) throw new AssistantError('proposal_limit', 'Quá nhiều proposal. Áp dụng hoặc bỏ qua proposal cũ.');
       const proposal: ProjectProposal = {
         id: randomUUID(), epoch: conversation.view.epoch, projectId: candidate.id, baseRevision: conversation.snapshot.revision,
@@ -365,7 +378,7 @@ export class AssistantService {
       });
       if (!accepted || conversation.view.status !== 'running') throw new AssistantError('declined', 'Render chưa được duyệt hoặc tác vụ đã dừng.');
       await this.owned(conversation.view.id, epoch);
-      this.assertCurrent(conversation, epoch);
+      active();
       return this.createRender(conversation, undefined, profile);
     }
     throw new AssistantError('tool_forbidden', 'Công cụ không thuộc allowlist.');
@@ -400,7 +413,7 @@ export class AssistantService {
     const existing = conversation.invocations.get(key);
     if (existing) return existing as Promise<AssistantRender>;
     if (conversation.view.status === 'running') throw new AssistantError('turn_busy', 'Chờ/dừng tác vụ trước khi render snapshot mới.', 409);
-    const validated = safeSnapshot(snapshot);
+    const validated = validateProjectSnapshot(snapshot);
     if (validated.project.id !== conversation.view.projectId) throw new AssistantError('project_changed', 'Project đã đổi.', 409);
     if (conversation.view.renders.length >= 20) throw new AssistantError('render_limit', 'Đã đạt giới hạn preview cho hội thoại.');
     conversation.snapshot = validated;
@@ -423,13 +436,100 @@ export class AssistantService {
   async dismiss(id: string, epoch: string, proposalId: string): Promise<void> {
     const conversation = await this.owned(id, epoch);
     this.assertCurrent(conversation, epoch);
+    const reservation = this.proposalLeases.get(`${id}:${proposalId}`);
+    if (reservation && reservation.lease.expiresAt > Date.now()) throw new AssistantError('proposal_reserved', 'Có tab đang áp dụng bản nháp này.', 409);
     conversation.view.proposals = conversation.view.proposals.filter((entry) => entry.id !== proposalId);
     this.emit(conversation);
+  }
+  private generationOwner(conversation: Conversation): GenerationOwner {
+    return { profileId: conversation.profileId, conversationId: conversation.view.id, epoch: conversation.view.epoch, projectId: conversation.view.projectId };
+  }
+  async ensureGenerationOwner(owner: GenerationOwner): Promise<void> {
+    const conversation = await this.owned(owner.conversationId, owner.epoch);
+    this.assertCurrent(conversation, owner.epoch);
+    if (conversation.view.projectId !== owner.projectId || conversation.profileId !== owner.profileId) throw new AssistantError('owner_changed', 'Dự án hoặc tài khoản đã thay đổi.', 409);
+    if (owner.turnId && (conversation.view.status !== 'running' || conversation.turnId !== owner.turnId)) throw new AssistantError('turn_changed', 'Tác vụ LLM đã dừng hoặc thay đổi.', 409);
+  }
+  async generationContext(id: string, epoch: string, rawSnapshot?: unknown) {
+    const conversation = await this.owned(id, epoch); this.assertCurrent(conversation, epoch);
+    if (rawSnapshot !== undefined) {
+      if (conversation.view.status === 'running') throw new AssistantError('turn_busy', 'Chờ hoặc dừng LLM trước khi dựng từ snapshot mới.', 409);
+      const snapshot = validateProjectSnapshot(rawSnapshot);
+      if (snapshot.project.id !== conversation.view.projectId) throw new AssistantError('project_changed', 'Dự án đã thay đổi.', 409);
+      conversation.snapshot = snapshot;
+    }
+    return { owner: this.generationOwner(conversation), snapshot: structuredClone(conversation.snapshot) };
+  }
+  async generationOperation(id: string, epoch: string, name: string, input: unknown, snapshot?: unknown, turnId?: string): Promise<unknown> {
+    if (!this.sceneGeneration) throw new AssistantError('generation_unavailable', 'Core tạo cảnh chưa được khởi tạo.');
+    const context = await this.generationContext(id, epoch, snapshot);
+    if (turnId) context.owner.turnId = turnId;
+    if (name === 'get_scene_generation_capabilities') { z.object({}).strict().parse(input); return this.sceneGeneration.capabilities(context.owner); }
+    if (name === 'list_scene_templates') { z.object({}).strict().parse(input); return this.sceneGeneration.templates(); }
+    if (name === 'list_registered_assets') { z.object({}).strict().parse(input); return this.sceneGeneration.assets(context.owner); }
+    if (name === 'plan_scene_generation') return this.sceneGeneration.plan(context.owner, context.snapshot, input);
+    if (name === 'request_scene_generation') { const { planId } = z.object({ planId: z.string().uuid() }).strict().parse(input); return this.sceneGeneration.request(context.owner, planId); }
+    const { requestId } = z.object({ requestId: z.string().uuid() }).strict().parse(input);
+    if (name === 'get_scene_generation_status') return this.sceneGeneration.status(context.owner, requestId);
+    if (name === 'cancel_scene_generation') { await this.sceneGeneration.cancel(context.owner, requestId); return { requestId, status: 'cancel_requested' }; }
+    throw new AssistantError('tool_forbidden', 'Công cụ không thuộc allowlist.');
+  }
+  async generatedSceneProposal(id: string, epoch: string, assetId: string, requestId: string, rawSnapshot: unknown): Promise<ProjectProposal> {
+    if (!this.sceneGeneration) throw new AssistantError('generation_unavailable', 'Core tạo cảnh chưa được khởi tạo.');
+    const context = await this.generationContext(id, epoch, rawSnapshot);
+    const status = await this.sceneGeneration.status(context.owner, requestId);
+    const { asset } = await this.sceneGeneration.resultFile(context.owner, assetId);
+    if (status.job?.status !== 'ready' || status.asset?.id !== assetId) throw new AssistantError('asset_not_ready', 'Cảnh chưa có media đã kiểm tra.');
+    const base = context.snapshot.project; const intent = status.plan.request.intent;
+    const seconds = intent.timelineDurationSeconds ?? (asset.mediaType === 'video' ? asset.metadata.durationInSeconds : 5);
+    const frames = Math.max(1, Math.round(seconds * base.fps));
+    if (asset.mediaType === 'video' && frames / base.fps > asset.metadata.durationInSeconds + 0.5 / base.fps) throw new AssistantError('media_duration', 'Thời lượng cảnh vượt clip đã tạo.');
+    const scene = asset.mediaType === 'video' ? { id: randomUUID(), type: 'video' as const, durationInFrames: frames, src: asset.storageKey, objectFit: intent.objectFit, volume: 0, playbackRate: 1, startFromFrame: 0 }
+      : { id: randomUUID(), type: 'image' as const, durationInFrames: frames, src: asset.storageKey, objectFit: intent.objectFit };
+    const candidate = { ...base, scenes: intent.placement === 'append' ? [...base.scenes, scene] : base.scenes.map((entry) => entry.id === intent.replaceSceneId ? { ...scene, transition: entry.transition } : entry) };
+    if (intent.placement === 'replace' && !base.scenes.some((entry) => entry.id === intent.replaceSceneId)) throw new AssistantError('scene_missing', 'Cảnh cần thay đã bị xóa. Lập yêu cầu dựng mới.');
+    const policy = await this.sceneGeneration.assetPolicy(context.owner, projectAssets(candidate));
+    const validated = validateCandidate(base, candidate, policy);
+    const conversation = await this.owned(id, epoch); this.assertCurrent(conversation, epoch);
+    if (conversation.view.proposals.length >= 4) throw new AssistantError('proposal_limit', 'Áp dụng hoặc bỏ qua bản nháp cũ trước.');
+    const proposal: ProjectProposal = { id: randomUUID(), epoch, projectId: base.id, baseRevision: context.snapshot.revision,
+      fingerprint: projectFingerprint(base), summary: `${intent.placement === 'append' ? 'Thêm' : 'Thay'} cảnh ${asset.mediaType === 'video' ? 'hoạt họa core' : status.plan.preset.providerId === 'gemini' ? 'ảnh Gemini' : 'ảnh core'}`,
+      candidate: validated, affected: [scene.id, ...(intent.replaceSceneId ? [intent.replaceSceneId] : [])], warnings: [] };
+    validateProjectSnapshot({ ...context.snapshot, project: validated }); conversation.view.proposals.push(proposal); this.emit(conversation); return structuredClone(proposal);
+  }
+  async reserveProposal(id: string, epoch: string, proposalId: string, attemptId: string, rawSnapshot: unknown) {
+    const conversation = await this.owned(id, epoch); this.assertCurrent(conversation, epoch);
+    if (this.appliedLeases.has(attemptId)) throw new AssistantError('proposal_consumed', 'Lần áp dụng đã được xác nhận.', 409);
+    const snapshot = validateProjectSnapshot(rawSnapshot);
+    const proposal = conversation.view.proposals.find((entry) => entry.id === proposalId);
+    if (!proposal) throw new AssistantError('proposal_consumed', 'Bản nháp đã được xử lý.', 409);
+    const policy = this.sceneGeneration ? await this.sceneGeneration.assetPolicy(this.generationOwner(conversation), projectAssets(proposal.candidate)) : undefined;
+    this.assertCurrent(conversation, epoch); validateProposal(snapshot.project, snapshot.revision, epoch, proposal, policy);
+    const key = `${id}:${proposalId}`; const existing = this.proposalLeases.get(key);
+    if (existing && existing.lease.expiresAt > Date.now() && existing.lease.attemptId !== attemptId) throw new AssistantError('proposal_reserved', 'Tab khác đang áp dụng bản nháp này.', 409);
+    if (this.proposalLeases.size >= 1000) for (const [leaseKey, entry] of this.proposalLeases) if (entry.lease.expiresAt <= Date.now()) this.proposalLeases.delete(leaseKey);
+    const lease = existing?.lease.attemptId === attemptId && existing.lease.expiresAt > Date.now() ? existing.lease : { attemptId, expiresAt: Date.now() + 30000 };
+    this.proposalLeases.set(key, { owner: epoch, proposalId, lease });
+    return { proposal: structuredClone(proposal), lease, assets: this.sceneGeneration ? await this.sceneGeneration.assets(this.generationOwner(conversation)) : [] };
+  }
+  async acknowledgeProposal(id: string, epoch: string, proposalId: string, attemptId: string, applied: boolean): Promise<void> {
+    const conversation = await this.owned(id, epoch); this.assertCurrent(conversation, epoch);
+    if (this.appliedLeases.get(attemptId) === `${id}:${proposalId}`) return;
+    const key = `${id}:${proposalId}`; const reservation = this.proposalLeases.get(key);
+    if (!reservation || reservation.owner !== epoch || reservation.lease.attemptId !== attemptId) throw new AssistantError('approval_expired', 'Lần áp dụng đã hết hiệu lực.', 409);
+    if (applied) {
+      conversation.view.proposals = conversation.view.proposals.filter((entry) => entry.id !== proposalId);
+      this.appliedLeases.set(attemptId, key);
+      if (this.appliedLeases.size > 1000) this.appliedLeases.delete(this.appliedLeases.keys().next().value!);
+    }
+    this.proposalLeases.delete(key); this.emit(conversation);
   }
   async consumeProposal(id: string, epoch: string, proposalId: string, rawSnapshot: unknown): Promise<ProjectProposal> {
     const conversation = await this.owned(id, epoch);
     this.assertCurrent(conversation, epoch);
-    const snapshot = safeSnapshot(rawSnapshot);
+    const reservation = this.proposalLeases.get(`${id}:${proposalId}`);
+    if (reservation && reservation.lease.expiresAt > Date.now()) throw new AssistantError('proposal_reserved', 'Có tab đang áp dụng bản nháp này.', 409);
+    const snapshot = validateProjectSnapshot(rawSnapshot);
     const proposal = conversation.view.proposals.find((entry) => entry.id === proposalId);
     if (!proposal) throw new AssistantError('proposal_consumed', 'Proposal đã được xử lý ở tab khác hoặc không còn hợp lệ.', 409);
     try { validateProposal(snapshot.project, snapshot.revision, epoch, proposal); }
@@ -449,6 +549,7 @@ export class AssistantService {
     this.finish(conversation, 'interrupted');
   }
   reset(): void {
+    this.proposalLeases.clear(); this.appliedLeases.clear(); this.sceneGeneration?.suspend();
     clearTimeout(this.persistenceTimer);
     this.generation++;
     for (const conversation of this.conversations.values()) {
@@ -462,6 +563,7 @@ export class AssistantService {
     this.persist();
   }
   suspend(): void {
+    this.proposalLeases.clear(); this.sceneGeneration?.suspend();
     this.generation++;
     clearTimeout(this.persistenceTimer);
     for (const conversation of this.conversations.values()) {
@@ -482,6 +584,7 @@ export class AssistantService {
     this.persist();
   }
   dispose(): void {
+    this.sceneGeneration?.dispose();
     clearTimeout(this.persistenceTimer);
     for (const conversation of this.conversations.values()) {
       if (conversation.view.status === 'running') this.finish(conversation, 'interrupted', 'Server đã đóng. Không tự phát lại tác vụ.');

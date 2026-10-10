@@ -1,7 +1,7 @@
 import React from 'react';
 import { Sparkles, Film } from 'lucide-react';
 import { useEditor } from '../../state/editorStore';
-import { AiChatPanel } from '../chat/AiChatPanel';
+import { AiChatPanel } from '../assistant/AiChatPanel';
 import { AssetPanel } from '../assets/AssetPanel';
 import { Tabs } from '../ui';
 

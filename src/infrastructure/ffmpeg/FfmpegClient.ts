@@ -1,65 +1,15 @@
-import { execFile, execSync } from 'node:child_process';
-import fs from 'node:fs';
-import path from 'node:path';
+import { execFile } from 'node:child_process';
 import { FfmpegExecutionResult } from './ffmpeg.types';
 import { FfmpegError } from '../../shared/errors/pipelineErrors';
 import { logger } from '../logging/logger';
-import { getEnv } from '../../config/env';
+import { resolveMediaBinary } from './MediaBinaryResolver';
 
 export class FfmpegClient {
-  private static cachedBinaryPath: string | null = null;
-
   /**
    * Resolves the FFmpeg binary path robustly across Windows and Unix environments.
    */
   static getBinaryPath(): string {
-    if (this.cachedBinaryPath) return this.cachedBinaryPath;
-
-    const env = getEnv();
-    if (env.ffmpegPath && fs.existsSync(env.ffmpegPath)) {
-      this.cachedBinaryPath = env.ffmpegPath;
-      return env.ffmpegPath;
-    }
-
-    // Attempt system PATH check
-    try {
-      const lookupCmd = process.platform === 'win32' ? 'where ffmpeg' : 'which ffmpeg';
-      const output = execSync(lookupCmd, { stdio: ['pipe', 'pipe', 'ignore'] })
-        .toString()
-        .trim()
-        .split('\r\n')[0]
-        .split('\n')[0];
-      if (output && fs.existsSync(output)) {
-        this.cachedBinaryPath = output;
-        return output;
-      }
-    } catch {
-      // PATH lookup failed, proceed to fallback detection
-    }
-
-    // Windows WinGet fallback check
-    if (process.platform === 'win32') {
-      const localAppData = process.env.LOCALAPPDATA || '';
-      const wingetDir = path.join(localAppData, 'Microsoft', 'WinGet', 'Packages');
-      if (fs.existsSync(wingetDir)) {
-        const matches = fs.readdirSync(wingetDir).filter((d) => d.includes('Gyan.FFmpeg'));
-        for (const match of matches) {
-          const pkgPath = path.join(wingetDir, match);
-          const subdirs = fs.readdirSync(pkgPath).filter((d) => d.startsWith('ffmpeg-'));
-          for (const subdir of subdirs) {
-            const candidate = path.join(pkgPath, subdir, 'bin', 'ffmpeg.exe');
-            if (fs.existsSync(candidate)) {
-              this.cachedBinaryPath = candidate;
-              return candidate;
-            }
-          }
-        }
-      }
-    }
-
-    // Default system command name fallback
-    this.cachedBinaryPath = 'ffmpeg';
-    return 'ffmpeg';
+    return resolveMediaBinary('ffmpeg');
   }
 
   /**

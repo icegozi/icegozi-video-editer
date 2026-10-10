@@ -1,4 +1,4 @@
-import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
 import { randomBytes, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
@@ -9,10 +9,10 @@ import { assistantDataDirectory, windowsCredentialEncryption } from '../chatgpt/
 import { checkRuntime } from '../codex/runtime';
 import { AssistantService, type PreviewRenderer } from '../../application/assistant/assistantService';
 import { AssistantError, safeAssistantError } from '../../application/assistant/errors';
-import { renderService } from '../../application/render/renderService';
+import { renderService } from '../render/renderService';
 import { RenderProfile } from '../../config/render.config';
 import { PATHS } from '../../config/paths.config';
-import type { AssistantStatus } from '../../shared/types/assistant';
+import type { AssistantStatus } from '../../application/assistant/assistant.contracts';
 import { ConversationStorage } from '../chatgpt/conversationStorage';
 import { validateAssistantAssets } from '../filesystem/assistantAssets';
 import { VideoProjectSchema } from '../../schemas/project.schema';
@@ -21,35 +21,31 @@ import { resolveAssetPath } from '../filesystem/paths';
 import type { ChatGPTClient } from '../chatgpt/devkit/types';
 import { startRuntime } from '../codex/runtime';
 import type { LocalApiServer } from './localApiServer';
+import { initDatabaseSchema, sqlite } from '../db/client';
+import { SceneGenerationService } from '../../application/scene-generation/sceneGenerationService';
+import { AssetIngestService } from '../media/AssetIngestService';
+import { GenerationRepository } from '../scene-generation/generationRepository';
+import { GoogleOAuthConnection } from '../scene-generation/googleOAuth';
+import { GenerationSecureStore } from '../scene-generation/secureStore';
+import { CoreSceneProvider } from '../scene-generation/CoreSceneProvider';
+import { GeminiImageProvider } from '../scene-generation/GeminiImageProvider';
+import type { SceneGenerationProvider } from '../../application/scene-generation/SceneGenerationProvider';
+import type { GoogleConnection } from '../../application/scene-generation/generation.contracts';
+import { ProjectDbService } from '../db/projectDbService';
+import { readJsonRequest, validLocalRequest } from './localRequest';
+export { validLocalRequest } from './localRequest';
 
 export interface CodexPluginOptions {
   auth?: ChatGPTClient;
   renderer?: PreviewRenderer;
   launch?: typeof startRuntime;
   directory?: string;
+  google?: GoogleConnection;
+  generation?: SceneGenerationService;
+  generationProviders?: SceneGenerationProvider[];
 }
 
 const ownerSchema = z.object({ conversationId: z.string().uuid(), epoch: z.string().uuid() });
-export function validLocalRequest(req: IncomingMessage, origin: string, capability: string, requireCapability = true): boolean {
-  if (req.headers.host !== new URL(origin).host) return false;
-  if (req.headers.origin && req.headers.origin !== origin) return false;
-  if (req.headers['sec-fetch-site'] === 'cross-site' || req.headers['sec-fetch-site'] === 'same-site') return false;
-  return !requireCapability || req.headers['x-icegozi-capability'] === capability;
-}
-
-async function requestBody(req: IncomingMessage): Promise<unknown> {
-  if (!req.headers['content-type']?.startsWith('application/json')) throw new AssistantError('content_type', 'Cần JSON.', 415);
-  let size = 0;
-  const chunks: Buffer[] = [];
-  for await (const chunk of req) {
-    const buffer = Buffer.from(chunk as Buffer);
-    size += buffer.length;
-    if (size > 1024 * 1024) throw new AssistantError('body_limit', 'Payload quá lớn.', 413);
-    chunks.push(buffer);
-  }
-  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); }
-  catch { throw new AssistantError('invalid_json', 'JSON không hợp lệ.'); }
-}
 
 export function codexApiPlugin(options: CodexPluginOptions = {}): Plugin {
   return createCodexBridge(options);
@@ -75,7 +71,17 @@ export function createCodexBridge(options: CodexPluginOptions = {}) {
     cancel: (id) => renderService.cancelJob(id),
     missingAssets: (project) => projectAssets(project).filter((key) => !fs.existsSync(resolveAssetPath(key))),
   };
-  const service = new AssistantService(auth, renderer, directory, options.launch, new ConversationStorage(path.join(directory, 'history')));
+  let service: AssistantService;
+  const google = options.google ?? new GoogleOAuthConnection(new GenerationSecureStore(path.join(directory, 'generation-auth'), windowsCredentialEncryption()));
+  const generation = options.generation ?? new SceneGenerationService(new GenerationRepository(sqlite), new AssetIngestService(PATHS.publicAssets),
+    options.generationProviders ?? [new CoreSceneProvider(), new GeminiImageProvider(google)], google, path.join(PATHS.temp, 'scene-generation'),
+    (owner) => service.ensureGenerationOwner(owner),
+    (snapshot) => {
+      ProjectDbService.createRenderSnapshot(snapshot.project, {
+        changeSummary: 'Scene generation context',
+      });
+    });
+  service = new AssistantService(auth, renderer, directory, options.launch, new ConversationStorage(path.join(directory, 'history')), generation);
   let runtimeStatus: Awaited<ReturnType<typeof checkRuntime>> | undefined;
   const connections = new Set<ServerResponse>();
   let origin = 'http://127.0.0.1:3200';
@@ -107,6 +113,7 @@ export function createCodexBridge(options: CodexPluginOptions = {}) {
     capability,
     transformIndexHtml() { return [{ tag: 'meta', attrs: { name: 'icegozi-capability', content: capability }, injectTo: 'head' as const }]; },
     configureServer(server: LocalApiServer) {
+      initDatabaseSchema();
       const updateOrigin = () => {
         const address = server.httpServer?.address();
         const port = address && typeof address !== 'string' ? address.port : server.config.server.port ?? 3200;
@@ -162,8 +169,24 @@ export function createCodexBridge(options: CodexPluginOptions = {}) {
             stream.pipe(res);
             return;
           }
+          if (req.method === 'GET' && url.pathname.startsWith('/api/codex/generation/result/')) {
+            const owner = ownerSchema.strict().parse(Object.fromEntries(url.searchParams));
+            const context = await service.generationContext(owner.conversationId, owner.epoch);
+            const assetId = z.string().uuid().parse(url.pathname.slice('/api/codex/generation/result/'.length));
+            const { file, asset } = await generation.resultFile(context.owner, assetId);
+            res.setHeader('Content-Type', asset.mimeType); res.setHeader('Content-Length', asset.fileSizeBytes); res.setHeader('Cache-Control', 'no-store');
+            res.setHeader('X-Content-Type-Options', 'nosniff');
+            const stream = fs.createReadStream(file); stream.on('error', () => res.destroy()); res.on('close', () => stream.destroy()); stream.pipe(res); return;
+          }
+          if (req.method === 'POST' && url.pathname === '/api/codex/generation/import-image') {
+            const owner = ownerSchema.strict().parse(Object.fromEntries(url.searchParams));
+            const context = await service.generationContext(owner.conversationId, owner.epoch);
+            if (Number(req.headers['content-length']) > 3 * 1024 * 1024) throw new AssistantError('image_large', 'Ảnh tham chiếu phải nhỏ hơn 3 MiB.', 413);
+            const mimeType = req.headers['content-type']?.split(';')[0] ?? '';
+            json(res, await generation.importImage(context.owner, context.snapshot, req, mimeType)); return;
+          }
           if (req.method !== 'POST') { json(res, { error: 'Endpoint không tồn tại.' }, 404); return; }
-          const body = await requestBody(req);
+          const body = await readJsonRequest(req);
           if (url.pathname === '/api/codex/login') {
             const options = z.object({ newProfile: z.boolean().optional(), profileId: z.string().optional() }).strict().parse(body);
             if (loginOperation) throw new AssistantError('login_busy', 'Có attempt đăng nhập đang chờ.', 409);
@@ -179,6 +202,45 @@ export function createCodexBridge(options: CodexPluginOptions = {}) {
           }
           if (url.pathname === '/api/codex/conversation') { json(res, await service.open(body)); return; }
           const owner = ownerSchema.parse(body);
+          if (url.pathname.startsWith('/api/codex/generation/')) {
+            const context = await service.generationContext(owner.conversationId, owner.epoch);
+            const route = url.pathname.slice('/api/codex/generation/'.length);
+            if (route === 'overview') { ownerSchema.strict().parse(body); json(res, await generation.overview(context.owner)); return; }
+            if (route === 'google/status') { ownerSchema.strict().parse(body); json(res, await google.status(context.owner.profileId)); return; }
+            if (route === 'google/configure') {
+              const input = ownerSchema.extend({ config: z.unknown() }).strict().parse(body);
+              await google.configure(context.owner.profileId, input.config); await service.ensureGenerationOwner(context.owner); json(res, await google.status(context.owner.profileId)); return;
+            }
+            if (route === 'google/login' || route === 'google/cancel' || route === 'google/disconnect') {
+              ownerSchema.strict().parse(body);
+              if (route.endsWith('/login')) await google.start(context.owner.profileId);
+              else if (route.endsWith('/cancel')) google.cancel(context.owner.profileId);
+              else await google.disconnect(context.owner.profileId);
+              await service.ensureGenerationOwner(context.owner); json(res, await google.status(context.owner.profileId)); return;
+            }
+            if (route === 'plan') {
+              const input = ownerSchema.extend({ request: z.unknown(), snapshot: z.unknown() }).strict().parse(body);
+              json(res, await service.generationOperation(owner.conversationId, owner.epoch, 'plan_scene_generation', input.request, input.snapshot)); return;
+            }
+            if (route === 'request') {
+              const input = ownerSchema.extend({ planId: z.string().uuid() }).strict().parse(body);
+              json(res, await service.generationOperation(owner.conversationId, owner.epoch, 'request_scene_generation', { planId: input.planId })); return;
+            }
+            if (route === 'approve') {
+              const input = ownerSchema.extend({ requestId: z.string().uuid(), accept: z.boolean() }).strict().parse(body);
+              json(res, await generation.approve(context.owner, input.requestId, input.accept)); return;
+            }
+            if (route === 'cancel' || route === 'retry') {
+              const input = ownerSchema.extend({ requestId: z.string().uuid() }).strict().parse(body);
+              if (route === 'retry') await generation.retryLocal(context.owner, input.requestId); else await generation.cancel(context.owner, input.requestId);
+              json(res, await generation.status(context.owner, input.requestId)); return;
+            }
+            if (route === 'propose') {
+              const input = ownerSchema.extend({ assetId: z.string().uuid(), requestId: z.string().uuid(), snapshot: z.unknown() }).strict().parse(body);
+              json(res, await service.generatedSceneProposal(owner.conversationId, owner.epoch, input.assetId, input.requestId, input.snapshot)); return;
+            }
+            json(res, { error: 'Endpoint không tồn tại.' }, 404); return;
+          }
           if (url.pathname === '/api/codex/turn') {
             const input = ownerSchema.extend({ requestId: z.string().uuid(), text: z.string().trim().min(1).max(8000), model: z.string().min(1).max(200), snapshot: z.unknown() }).strict().parse(body);
             json(res, await service.send(input.conversationId, input.epoch, input.requestId, input.text, input.model, input.snapshot)); return;
@@ -195,6 +257,14 @@ export function createCodexBridge(options: CodexPluginOptions = {}) {
           if (url.pathname === '/api/codex/proposal/apply') {
             const input = ownerSchema.extend({ proposalId: z.string().uuid(), snapshot: z.unknown() }).strict().parse(body);
             json(res, await service.consumeProposal(input.conversationId, input.epoch, input.proposalId, input.snapshot)); return;
+          }
+          if (url.pathname === '/api/codex/proposal/reserve') {
+            const input = ownerSchema.extend({ proposalId: z.string().uuid(), attemptId: z.string().uuid(), snapshot: z.unknown() }).strict().parse(body);
+            json(res, await service.reserveProposal(input.conversationId, input.epoch, input.proposalId, input.attemptId, input.snapshot)); return;
+          }
+          if (url.pathname === '/api/codex/proposal/ack') {
+            const input = ownerSchema.extend({ proposalId: z.string().uuid(), attemptId: z.string().uuid(), applied: z.boolean() }).strict().parse(body);
+            await service.acknowledgeProposal(input.conversationId, input.epoch, input.proposalId, input.attemptId, input.applied); json(res, { acknowledged: true }); return;
           }
           if (url.pathname === '/api/codex/render') {
             const input = ownerSchema.extend({ requestId: z.string().uuid(), snapshot: z.unknown() }).strict().parse(body);

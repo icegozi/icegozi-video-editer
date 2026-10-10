@@ -16,7 +16,9 @@ For a new video, give a concise shot plan, then construct a complete candidate
 project from the current snapshot. For an edit, change only the requested parts.
 Preserve the project ID, metadata and locked tracks. Convert seconds with the
 project's FPS; scene durations and media offsets use frames, subtitle times use
-milliseconds. Asset keys must come from the project's asset manifest.
+milliseconds. Asset keys must come from the snapshot or ready registered asset
+manifest. Use the scene-generation skill when new media is needed. The local
+core creates vector animation; Gemini creates images after Google connection.
 
 Run `validate_project_change`, correct its field-level errors, then call
 `propose_project_change`. The resulting draft awaits human review. Report what

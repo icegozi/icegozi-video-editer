@@ -1,63 +1,17 @@
-import { execFile, execSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import fs from 'node:fs';
-import path from 'node:path';
 import { FfprobeRawResult } from './ffmpeg.types';
 import { MediaMetadata } from '../../domain/video/MediaAsset';
 import { MediaInspectionError } from '../../shared/errors/pipelineErrors';
-import { getEnv } from '../../config/env';
 import { logger } from '../logging/logger';
+import { resolveMediaBinary } from './MediaBinaryResolver';
 
 export class FfprobeClient {
-  private static cachedBinaryPath: string | null = null;
-
   /**
    * Resolves the FFprobe binary path robustly across environments.
    */
   static getBinaryPath(): string {
-    if (this.cachedBinaryPath) return this.cachedBinaryPath;
-
-    const env = getEnv();
-    if (env.ffprobePath && fs.existsSync(env.ffprobePath)) {
-      this.cachedBinaryPath = env.ffprobePath;
-      return env.ffprobePath;
-    }
-
-    try {
-      const lookupCmd = process.platform === 'win32' ? 'where ffprobe' : 'which ffprobe';
-      const output = execSync(lookupCmd, { stdio: ['pipe', 'pipe', 'ignore'] })
-        .toString()
-        .trim()
-        .split('\r\n')[0]
-        .split('\n')[0];
-      if (output && fs.existsSync(output)) {
-        this.cachedBinaryPath = output;
-        return output;
-      }
-    } catch {
-      // PATH check failed
-    }
-
-    if (process.platform === 'win32') {
-      const localAppData = process.env.LOCALAPPDATA || '';
-      const wingetDir = path.join(localAppData, 'Microsoft', 'WinGet', 'Packages');
-      if (fs.existsSync(wingetDir)) {
-        const matches = fs.readdirSync(wingetDir).filter((d) => d.includes('Gyan.FFmpeg'));
-        for (const match of matches) {
-          const pkgPath = path.join(wingetDir, match);
-          const subdirs = fs.readdirSync(pkgPath).filter((d) => d.startsWith('ffmpeg-'));
-          for (const subdir of subdirs) {
-            const candidate = path.join(pkgPath, subdir, 'bin', 'ffprobe.exe');
-            if (fs.existsSync(candidate)) {
-              this.cachedBinaryPath = candidate;
-              return candidate;
-            }
-          }
-        }
-      }
-    }
-
-    this.cachedBinaryPath = 'ffprobe';
-    return 'ffprobe';
+    return resolveMediaBinary('ffprobe');
   }
 
   /**
@@ -72,7 +26,7 @@ export class FfprobeClient {
     const args = ['-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', filePath];
 
     return new Promise((resolve, reject) => {
-      execFile(binary, args, { maxBuffer: 20 * 1024 * 1024 }, (error, stdout, stderr) => {
+      execFile(binary, args, { maxBuffer: 20 * 1024 * 1024, timeout: 30000, windowsHide: true }, (error, stdout, stderr) => {
         if (error) {
           return reject(
             new MediaInspectionError(filePath, `FFprobe failed: ${stderr?.toString() || error.message}`)

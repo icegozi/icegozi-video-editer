@@ -19,7 +19,8 @@ afterEach(() => {
 describe('App-bundled video skills', () => {
   it('discovers metadata and loads each packaged workflow by its trusted ID', () => {
     const catalog = listVideoSkills();
-    expect(catalog).toHaveLength(6);
+    expect(catalog).toHaveLength(7);
+    expect(catalog.some((skill) => skill.id === 'icegozi-scene-generation')).toBe(true);
     expect(new Set(catalog.map((skill) => skill.id)).size).toBe(catalog.length);
     for (const metadata of catalog) {
       expect(metadata).not.toHaveProperty('instructions');

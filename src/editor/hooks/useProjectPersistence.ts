@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useEditor } from '../state/editorStore';
-import { ProjectStorage } from '../../infrastructure/storage/ProjectStorage';
+import { ProjectStorage } from '../persistence/ProjectStorage';
 import { demoProject } from '../../../projects/demo/project';
 
 export function useProjectPersistence() {

@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { index, sqliteTable, text, integer, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export interface TimelineData {
   schemaVersion?: number;
@@ -29,14 +29,24 @@ export const projects = sqliteTable('projects', {
 /**
  * Immutable snapshots storing the exact timeline state and revision history.
  */
-export const projectSnapshots = sqliteTable('project_snapshots', {
-  id: text('id').primaryKey(),
-  projectId: text('project_id')
-    .notNull()
-    .references(() => projects.id, { onDelete: 'cascade' }),
-  revision: integer('revision').notNull(),
-  changeSummary: text('change_summary'),
-  timelineData: text('timeline_data', { mode: 'json' }).$type<TimelineData>().notNull(),
-  trackSettings: text('track_settings', { mode: 'json' }).$type<Record<string, unknown>>().notNull().default({}),
-  createdAt: integer('created_at').notNull(),
-});
+export const projectSnapshots = sqliteTable(
+  'project_snapshots',
+  {
+    id: text('id').primaryKey(),
+    projectId: text('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    revision: integer('revision').notNull(),
+    changeSummary: text('change_summary'),
+    timelineData: text('timeline_data', { mode: 'json' }).$type<TimelineData>().notNull(),
+    trackSettings: text('track_settings', { mode: 'json' }).$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [
+    index('idx_snapshots_project').on(table.projectId),
+    uniqueIndex('project_snapshots_project_revision_unique').on(
+      table.projectId,
+      table.revision,
+    ),
+  ],
+);

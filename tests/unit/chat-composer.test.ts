@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
-import { PromptComposer } from '../../src/editor/components/chat/PromptComposer';
+import { PromptComposer } from '../../src/editor/components/assistant/PromptComposer';
 
 describe('PromptComposer & IME Keyboard Guard', () => {
   it('instantiates PromptComposer as a valid React component', () => {

@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { createInitialState, editorReducer } from '../../src/editor/state/editorStore';
 import { projectFingerprint, validateCandidate } from '../../src/application/assistant/projectProposals';
 import { VideoProjectSchema } from '../../src/schemas/project.schema';
-import type { ProjectProposal } from '../../src/shared/types/assistant';
+import type { ProjectProposal } from '../../src/application/assistant/assistant.contracts';
 import { mockProject } from '../fixtures/mock-project';
 
 const createProposal = (raw = mockProject, epoch = randomUUID()): ProjectProposal => ({

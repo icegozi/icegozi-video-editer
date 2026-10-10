@@ -4,6 +4,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { runtimeExecutable } from '../src/infrastructure/codex/runtime';
 import { ensureBrowser } from '@remotion/renderer';
+import { bundledMediaBinary } from '../src/infrastructure/ffmpeg/bundledBinaries';
 
 if (process.platform !== 'win32') throw new Error('Build this Windows package on Windows so native dependencies match.');
 if (Number(process.versions.node.split('.')[0]) !== 24) throw new Error('Use Node 24 to package the app and match its native SQLite module.');
@@ -23,9 +24,10 @@ const copy = (relative: string) => {
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.cpSync(source, target, { recursive: true, filter: (file) => path.basename(file) !== 'node_modules' });
 };
-for (const relative of ['dist', 'src', 'public', 'projects', 'skills/video', 'tsconfig.json', 'remotion.config.ts',
-  'build/server.mjs', 'build/check-code-mode.mjs', 'ASSISTANT_INTEGRATION.md']) copy(relative);
+for (const relative of ['dist', 'drizzle', 'src', 'projects/demo', 'skills/video', 'tsconfig.json', 'remotion.config.ts',
+  'build/server.mjs', 'build/check-code-mode.mjs', 'build/check-scene-generation.mjs', 'ASSISTANT_INTEGRATION.md', 'SCENE_GENERATION.md']) copy(relative);
 fs.mkdirSync(path.join(destination, 'projects'), { recursive: true });
+fs.mkdirSync(path.join(destination, 'public', 'assets'), { recursive: true });
 for (const source of new Set(packages.slice(1))) {
   const relative = path.relative(root, source);
   assert.ok(relative.startsWith(`node_modules${path.sep}`) && !relative.startsWith('..'));
@@ -52,6 +54,16 @@ execFileSync(path.join(destination, 'runtime', 'node.exe'), ['--input-type=modul
   'import { createRequire } from "node:module"; const require = createRequire(import.meta.url); const Database = require("better-sqlite3"); const db = new Database(":memory:"); db.close();'],
 { cwd: destination, windowsHide: true, stdio: 'pipe' });
 assert.ok(!fs.existsSync(path.join(destination, 'node_modules', 'vite')));
+for (const name of ['ffmpeg', 'ffprobe'] as const) {
+  const binary = bundledMediaBinary(name); assert.ok(binary, `Missing bundled ${name}`);
+  const packaged = path.join(destination, path.relative(root, binary)); assert.ok(fs.existsSync(packaged));
+  execFileSync(packaged, ['-version'], { cwd: destination, windowsHide: true, stdio: 'pipe' });
+  fs.writeFileSync(path.join(destination, 'runtime', `${name.toUpperCase()}-LICENSE.txt`), execFileSync(packaged, ['-L'], { windowsHide: true, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }));
+}
+fs.writeFileSync(path.join(destination, 'runtime', 'MEDIA-RUNTIME-NOTICE.txt'),
+  'FFmpeg and FFprobe are supplied by the pinned @remotion/compositor-win32-x64-msvc package.\r\n' +
+  'Binary source/build repository: https://github.com/remotion-dev/remotion/tree/main/packages/compositor-win32-x64-msvc\r\n' +
+  'See FFMPEG-LICENSE.txt, FFPROBE-LICENSE.txt and ASSISTANT_INTEGRATION.md for runtime notices.\r\n');
 fs.writeFileSync(path.join(destination, 'Start ICEGOZI.cmd'),
   '@echo off\r\ncd /d "%~dp0"\r\nset "ICEGOZI_OPEN_BROWSER=1"\r\n"%~dp0runtime\\node.exe" "%~dp0build\\server.mjs"\r\nif errorlevel 1 pause\r\n');
 fs.writeFileSync(path.join(destination, 'README.txt'),
@@ -60,5 +72,7 @@ fs.writeFileSync(path.join(destination, 'README.txt'),
   'User projects, uploads and renders are stored under %LOCALAPPDATA%\\icegozi-video\\workspace.\r\n' +
   'ChatGPT connections remain protected by your Windows account and are not bundled.\r\n' +
   'To change the port, set ICEGOZI_PORT before starting.\r\n' +
-  'Native tool self-check: runtime\\node.exe build\\check-code-mode.mjs\r\n');
+  'Native tool self-check: runtime\\node.exe build\\check-code-mode.mjs\r\n' +
+  'Scene core self-check: runtime\\node.exe build\\check-scene-generation.mjs\r\n' +
+  'Gemini API key / Google OAuth setup and scene usage: SCENE_GENERATION.md\r\n');
 console.info(`Windows package ready: ${destination}`);

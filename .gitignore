@@ -28,7 +28,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 *.log
-docs/*
 !docs/ui-ux/
 
 # Editor & OS files

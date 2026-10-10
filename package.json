@@ -15,6 +15,7 @@
     "test": "vitest run && npm run test:siwc",
     "test:siwc": "node --import tsx --test tests/siwc-devkit/*.check.mjs",
     "test:assistant-ui": "tsx tests/e2e/assistant-ui.check.ts",
+    "test:scene-ui": "tsx tests/e2e/scene-generation-ui.check.ts",
     "codex:protocol": "tsx scripts/generate-codex-protocol.ts",
     "codex:check": "tsx scripts/check-codex-runtime.ts",
     "test:watch": "vitest",
@@ -25,6 +26,7 @@
     "build:app": "npm run build:editor && tsx scripts/build-app.ts",
     "start": "node build/server.mjs",
     "codex:check-tools": "tsx scripts/check-code-mode.ts",
+    "scene:check": "tsx scripts/check-scene-generation.ts",
     "package:windows": "npm run build:app && tsx scripts/package-windows.ts"
   },
   "dependencies": {

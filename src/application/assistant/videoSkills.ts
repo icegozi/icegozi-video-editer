@@ -4,8 +4,8 @@ import { PATHS } from '../../config/paths.config';
 import { AssistantError } from './errors';
 
 export const VIDEO_SKILL_IDS = ['icegozi-video-workflow', 'icegozi-short-video', 'icegozi-text-motion',
-  'icegozi-timeline-edit', 'icegozi-audio-captions', 'icegozi-render-check'] as const;
-export const VIDEO_SKILLS_VERSION = '1.0.0';
+  'icegozi-timeline-edit', 'icegozi-audio-captions', 'icegozi-render-check', 'icegozi-scene-generation'] as const;
+export const VIDEO_SKILLS_VERSION = '1.1.1';
 
 export function readVideoSkill(id: string, root = path.join(PATHS.root, 'skills', 'video')) {
   if (!VIDEO_SKILL_IDS.includes(id as typeof VIDEO_SKILL_IDS[number])) {

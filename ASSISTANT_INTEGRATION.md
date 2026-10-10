@@ -72,7 +72,7 @@ this integration. Users buy/manage their own ChatGPT plan through OpenAI.
   validation, proposal, preview/final render requests and render status. These
   APIs are experimental and version pinned. Resume reuses persisted tools and
   environments; `thread/resume` has no `dynamicTools` field.
-- The app owns six small `SKILL.md` workflows under `skills/video/`. A base
+- The app owns seven small `SKILL.md` workflows under `skills/video/`. A base
   workflow and skill metadata are injected into developer instructions; full
   specialized content is loaded through a trusted-ID tool, not unrestricted
   filesystem access. The package includes these instructions. The runtime's
@@ -100,12 +100,14 @@ validation returns field-level errors without creating a draft or render.
 
 Drafts are created only by the typed proposal tool, not by extracting JSON
 from prose. The bridge checks unique IDs, local assets, locks and domain rules.
-The UI shows the candidate and warnings before applying. Backend consumption
-prevents two tabs claiming the same proposal. The reducer checks epoch,
+The UI shows the candidate and warnings before applying. Backend reserve/lease/ack
+prevents two tabs claiming the same proposal and retains drafts on stale applies. The reducer checks epoch,
 project ID, revision, SHA-256 fingerprint and locks again at dispatch time.
 A successful apply makes one undo entry, rebuilds the timeline, reconciles
 selection/playhead, increments revision and enables existing autosave.
-If an edit races the apply response, the reducer refuses it; request a new draft.
+If an edit races the apply response, the reducer refuses it and the draft remains available for review or rebuilding.
+
+Scene generation uses a local typed vector renderer and Gemini still-image API with API keys or official Google Desktop OAuth. Both authentication modes use profile-scoped Windows DPAPI storage; keys are submitted only by the backend in `x-goog-api-key`, while OAuth uses bearer/quota-project headers. Existing OAuth records remain compatible. Replacing/removing credentials invalidates old plans. The model has no access to connection-management endpoints, keys or tokens. Generation approvals and timeline apply approvals are independent; imported/generated assets require owner/project grants and file validation. See [SCENE_GENERATION.md](SCENE_GENERATION.md) for setup, usage, persistence, cancellation and fixture/live verification boundaries.
 
 Preview uses an immutable snapshot through the existing Remotion service.
 Asset real paths must remain within `public/assets`; originals are never changed.

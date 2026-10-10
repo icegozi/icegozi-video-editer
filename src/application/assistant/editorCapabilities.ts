@@ -3,6 +3,7 @@ import { VideoProjectSchema, AudioTrackConfigSchema, SubtitleCueSchema, TrackSet
 import { TextSceneSchema, ImageSceneSchema, VideoSceneSchema, FormulaSceneSchema } from '../../schemas/scene.schema';
 import { videoTools, EDITOR_TOOLSET_VERSION } from './editorTools';
 import { listVideoSkills, readVideoSkill, VIDEO_SKILLS_VERSION } from './videoSkills';
+import type { GenerationCapabilities } from '../scene-generation/generation.contracts';
 
 export const EditableProjectSchema = z.object({ ...VideoProjectSchema.shape,
   scenes: z.array(z.discriminatedUnion('type', [TextSceneSchema.strict(), ImageSceneSchema.strict(), VideoSceneSchema.strict(), FormulaSceneSchema.strict()])).min(1).max(500),
@@ -11,16 +12,17 @@ export const EditableProjectSchema = z.object({ ...VideoProjectSchema.shape,
   trackSettings: z.record(z.string(), TrackSettingSchema.strict()).optional(),
 }).strict();
 
-export function editorCapabilities() {
+export function editorCapabilities(generation?: GenerationCapabilities) {
   return { app: 'ICEGOZI Video', toolsetVersion: EDITOR_TOOLSET_VERSION, skillVersion: VIDEO_SKILLS_VERSION,
     codeModeResultEncoding: 'JSON string; use JSON.parse(await tools.video_editor__tool_name(args)) before accessing fields.',
     sceneTypes: ['text', 'formula', 'image', 'video'],
     timing: { scenes: 'frames', mediaOffsets: 'frames', subtitles: 'milliseconds', secondsToFrames: 'Math.round(seconds * project.fps)' },
     limits: { maxScenes: 500, maxAudioTracks: 100, maxSubtitleCues: 2000, maxSnapshotBytes: 256 * 1024, maxRenderJobs: 20, maxPendingDrafts: 4 },
-    rules: ['Preserve project ID and metadata.', 'Respect locked tracks.', 'Use only existing project asset keys.',
+    rules: ['Preserve project ID and metadata.', 'Respect locked tracks.', 'Use existing snapshot assets or ready registered assets granted for this owner/project.',
       'IDs are unique across scenes, audio and subtitles.', 'Crossfade overlaps must fit adjacent scenes.',
       'Drafts require user approval; preview renders the current snapshot.'],
-    generation: { images: false, footage: false, voice: false, music: false, transcription: false },
+    generation: { images: !!generation, footage: false, localAnimation: !!generation, voice: false, music: false, transcription: false },
+    sceneGeneration: generation ?? null,
     rendering: { profiles: ['preview', 'final'], approvalRequired: true, visualInspection: false },
     projectSchema: z.toJSONSchema(EditableProjectSchema), tools: videoTools[0].tools, skills: listVideoSkills() };
 }

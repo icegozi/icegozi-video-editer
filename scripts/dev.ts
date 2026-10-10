@@ -44,16 +44,36 @@ export async function existingDevServer(projectRoot: string, port: number): Prom
 
   const origin = `http://127.0.0.1:${port}`;
   const marker = `<meta name="${DEV_PROJECT_META}" content="${devProjectId(projectRoot)}">`;
+  let sameProject = false;
   try {
     const response = await fetch(origin, {
       // The first HTML request can wait for Vite's cold dependency scan on Windows.
       signal: AbortSignal.timeout(15000),
       redirect: 'error',
     });
-    if (response.ok && (await response.text()).includes(marker)) return origin;
+    if (response.ok && (await response.text()).includes(marker)) {
+      sameProject = true;
+      // Vite can still serve HTML after its transform environment has closed.
+      const modules = await Promise.all(['/@vite/client', '/src/editor/main.tsx'].map(async (pathname) => {
+        const module = await fetch(origin + pathname, {
+          signal: AbortSignal.timeout(15000),
+          redirect: 'error',
+        });
+        if (!module.ok || !/^(?:text|application)\/(?:javascript|ecmascript)\b/i.test(module.headers.get('content-type') ?? '')) {
+          await module.body?.cancel();
+          return false;
+        }
+        return (await module.text()).trim().length > 0;
+      }));
+      if (modules.every(Boolean)) return origin;
+    }
   } catch {
     // An occupied port with no healthy project response must not be reused.
   }
+  if (sameProject) throw new Error(
+    `Port ${port} belongs to this ICEGOZI dev server, but its JavaScript is not responding. ` +
+    'Restart the existing dev server with Ctrl+C in its terminal, then run npm run dev again.',
+  );
   throw new Error(
     `Port ${port} is occupied by another application or an unresponsive server. ` +
     `Stop that process, or run npm run dev -- --port ${port === 65535 ? 3201 : port + 1}.`,

@@ -4,18 +4,22 @@
 
 - The app uses React 19, TypeScript, Vite, Remotion, Zod, and a Node-based FFmpeg pipeline.
 - `src/editor` contains the browser editor. `src/video` and `src/app` contain Remotion compositions and scene registration.
-- `src/domain` contains framework-independent models; `src/application` contains timeline, media, and render workflows; `src/infrastructure` contains filesystem and process adapters.
+- `src/domain` contains framework-independent models; `src/application` contains assistant, scene-generation, timeline, media, and render workflows; `src/infrastructure` contains database, server, provider, filesystem, process, and render adapters.
+- Scene-generation contracts and ports live in `src/application/scene-generation`; SQLite/Google/CoreScene implementations live in `src/infrastructure/scene-generation`. The HTTP server is the composition root.
+- Browser project persistence belongs to `src/editor/persistence`; headless render and generated-media ingest belong to infrastructure.
 - Project definitions use `VideoProject` in `src/domain/video/VideoProject.ts` and runtime schemas in `src/schemas/project.schema.ts` (with unique ID validation across scenes, audio tracks, and subtitles).
 - The timeline uses sequential scene layout by default; overlapping transitions (`crossfade`) adjust `currentStartFrame` backwards by `transition.durationInFrames` to render dual opacity envelopes without audio drift.
 - Root composition (`src/app/Root.tsx`) dynamically computes canvas dimensions, fps, and duration via `calculateMetadata({ props })`.
 
 ## Persistence & Storage Rules
 
-- `ProjectStorage` (`src/infrastructure/storage/ProjectStorage.ts`) persists projects in browser `localStorage` with Zod schema validation and monotonically increasing revision counters.
+- `ProjectStorage` (`src/editor/persistence/ProjectStorage.ts`) persists projects in browser `localStorage` with Zod schema validation and monotonically increasing revision counters.
 - Distinguishes same-tab out-of-order writes (gracefully ignored, retaining newer revision) from multi-tab conflicts (rejected when external storage advanced beyond tab's known revision).
 - Server persistence (`src/infrastructure/db/projectDbService.ts`) implements Compare-And-Swap (CAS) via `expectedServerRevision` and idempotent saves (same content returns existing revision without counter bumps).
 - `createRenderSnapshot` captures immutable timeline state without incrementing the edited project's `currentRevision` counter and reuses existing snapshot records to satisfy revision uniqueness.
 - Full domain metadata (`schemaVersion`, `metadata`, `trackSettings`) roundtrips through SQLite snapshot tables.
+- Checked-in SQL under `drizzle/` is the runtime schema authority. `src/infrastructure/db/migrations.ts` adopts complete legacy bootstrap schemas, rejects partial/ambiguous state, and applies additive migrations. Windows packages must include `drizzle/`.
+- Vitest setup always overrides `ICEGOZI_DB_PATH` with `:memory:`; never allow test processes to inherit a developer or production database path.
 - `useProjectPersistence` provides 800ms debounced autosave, manual save, reset to demo, and JSON export/import. Importing JSON marks workspace dirty for autosave; restoring persistence marks saved.
 - Video scene split offset calculation: `secondHalf.startFromFrame = firstHalf.startFromFrame + Math.round(offsetInScene * playbackRate)`. Split keeps outgoing transition only on second half.
 
@@ -34,6 +38,7 @@
 - `FileSystem.cleanDirectory` enforces a strict allowlist (`normalized`, `frames`, `previews`, `temp`) and verifies `fs.realpathSync` path containment to prevent symlink/junction escapes. Root, public, and output folders are protected.
 - Intermediate media normalization fingerprints via SHA-256 (source path, file size, mtime, target width/height/fps) with atomic promotion (`fs.renameSync`) and in-flight request deduplication.
 - File uploads and assets are resolved without double `assets/` prefix via `resolveAssetPath`.
+- FFmpeg and FFprobe share `MediaBinaryResolver`: explicit environment path, bundled binary, system lookup, WinGet fallback, then command name.
 
 ## Render Service Architecture
 
@@ -50,7 +55,7 @@
 - `npm test`
 - `npm run build:editor`
 - `npm run dev` starts the Vite editor on port 3200 (includes render API plugin).
-- The dev launcher reuses a healthy existing editor only when its HTML project-root fingerprint matches this repository. Keep the fixed loopback host and `strictPort`; do not kill arbitrary port owners or silently move the assistant bridge to another port. Explicit `--port` overrides are supported.
+- The dev launcher reuses an existing editor only when its HTML project-root fingerprint matches and both `/@vite/client` and `/src/editor/main.tsx` return nonempty JavaScript. Vite can retain its HTTP listener/HTML while its transform environment returns `504 Outdated Request`; HTML 200 alone does not prove the editor works. Keep the fixed loopback host and `strictPort`; do not kill arbitrary port owners or silently move the assistant bridge to another port. Explicit `--port` overrides are supported.
 - `npm run render:preview` and `npm run render` invoke the CLI render pipeline.
 
 ## User Corrections & Database Decisions
@@ -66,6 +71,12 @@
 - Preserve existing staged, unstaged, and untracked work. Do not create commits or alter branch history without an explicit request.
 
 ## Local ChatGPT/Codex Assistant
+
+- 2026-10-10: Scene creation must have an app-owned local core rather than depend on Runway or an external editor. The user subsequently selected Gemini for generated images and requested Google account connection; implement official Google authentication separately from ChatGPT SIWC. Never reuse Gemini web cookies or imply that a consumer Gemini subscription grants API billing entitlement.
+- Scene core accepts a strict vector scene graph and produces PNG/MP4 through the installed Remotion runtime. Gemini images use a user-configured API key or Google Desktop OAuth client with PKCE/state/nonce and DPAPI storage scoped per assistant profile. Generation approvals never mutate the timeline; ambiguous image submissions are not automatically retried.
+- 2026-10-10: User requested API-key setup using an example and will replace it with a new key. Provide the app's Gemini API-key form with a placeholder; never persist the pasted example in source, package or credentials. API keys stay in DPAPI and only reach Google's fixed endpoint via backend headers. Keep OAuth available and compatible; changing/removing a connection invalidates old plans.
+- Gemini key validation must allow dots for Google's newer `AQ.` authorization keys as well as legacy `AIza` keys. Keep browser/server rules shared, report field-specific failures without echoing credentials, and distinguish local configuration from Google API entitlement. Normalize surrounding quotes or a single copied `x-goog-api-key` header, never execute/accept a full curl command.
+- Generated/imported media needs a verified owner/project grant at the server and browser reducer. Apply uses reserve/lease/ack so stale dispatches retain drafts. Keep the scene job database separate from render jobs, and never package developer workspace media, user projects or credentials.
 
 - The assistant uses SIWC and each user's own ChatGPT plan permission; never reuse `.env.local` API keys, Codex auth files or ChatGPT cookies as fallback.
 - Browser project state is authoritative. AI changes use `APPLY_AI_PROJECT_CHANGE` with epoch/revision/SHA-256 checks and one undo entry; `LOAD_PROJECT` is not an AI edit.

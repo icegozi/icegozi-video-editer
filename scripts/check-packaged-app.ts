@@ -13,6 +13,8 @@ assert.ok(fs.existsSync(path.join(release, 'skills', 'video', 'icegozi-text-moti
 const node = path.join(release, 'runtime', 'node.exe');
 execFileSync(node, [path.join(release, 'build', 'check-code-mode.mjs')],
   { cwd: release, windowsHide: true, stdio: 'inherit', timeout: 45000 });
+execFileSync(node, [path.join(release, 'build', 'check-scene-generation.mjs')],
+  { cwd: release, windowsHide: true, stdio: 'inherit', timeout: 360000 });
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'icegozi-packaged-check-'));
 const workspace = path.join(directory, 'workspace');
 const origin = 'http://127.0.0.1:3218';

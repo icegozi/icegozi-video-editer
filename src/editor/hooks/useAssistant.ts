@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditor } from '../state/editorStore';
-import type { AssistantConversation, AssistantEvent, AssistantRender, AssistantStatus, ProjectProposal } from '../../shared/types/assistant';
+import type { AssistantConversation, AssistantEvent, AssistantRender, AssistantStatus, ProjectProposal, ProposalLease } from '../../application/assistant/assistant.contracts';
+import { RegisteredAssetSchema } from '../../application/scene-generation/generation.contracts';
+import { SnapshotSchema } from '../../application/assistant/assistant.contracts';
 
 export async function assistantRequest<T>(route: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const capability = document.querySelector<HTMLMetaElement>('meta[name="icegozi-capability"]')?.content;
@@ -18,7 +20,14 @@ export async function assistantRequest<T>(route: string, body?: unknown, signal?
 export function useAssistant() {
   const { state, dispatch } = useEditor();
   const stateRef = useRef(state);
+  const applyPending = useRef<{ proposalId: string; epoch: string; resolve: (applied: boolean) => void } | null>(null);
   stateRef.current = state;
+  useEffect(() => {
+    const pending = applyPending.current; if (!pending) return;
+    if (state.appliedAiProposalIds.includes(pending.proposalId)) { applyPending.current = null; pending.resolve(true); }
+    else if (state.assistantApplyError || state.assistantEpoch !== pending.epoch) { applyPending.current = null; pending.resolve(false); }
+  }, [state.appliedAiProposalIds, state.assistantApplyError, state.assistantEpoch]);
+  useEffect(() => () => { applyPending.current?.resolve(false); applyPending.current = null; }, []);
   const [status, setStatus] = useState<AssistantStatus | null>(null);
   const [conversation, setConversation] = useState<AssistantConversation | null>(null);
   const [models, setModels] = useState<AssistantStatus['models']>([]);
@@ -26,7 +35,7 @@ export function useAssistant() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
-  const snapshot = useCallback(() => ({ project: stateRef.current.project, revision: stateRef.current.revision,
+  const snapshot = useCallback(() => SnapshotSchema.parse({ project: stateRef.current.project, revision: stateRef.current.revision,
     selectedClipId: stateRef.current.selectedClipId, playhead: stateRef.current.currentFrame }), []);
 
   const refreshStatus = useCallback(async () => {
@@ -140,8 +149,20 @@ export function useAssistant() {
     await assistantRequest('turn', { ...owner(), requestId: crypto.randomUUID(), text, model, snapshot: snapshot() });
   });
   const apply = (proposal: ProjectProposal) => run(async () => {
-    const validated = await assistantRequest<ProjectProposal>('proposal/apply', { ...owner(), proposalId: proposal.id, snapshot: snapshot() });
-    dispatch({ type: 'APPLY_AI_PROJECT_CHANGE', proposal: validated });
+    const currentOwner = owner(); const attemptId = crypto.randomUUID();
+    const reserved = await assistantRequest<{ proposal: ProjectProposal; lease: ProposalLease; assets: unknown[] }>('proposal/reserve',
+      { ...currentOwner, proposalId: proposal.id, attemptId, snapshot: snapshot() });
+    let applied = false;
+    if (stateRef.current.assistantEpoch === currentOwner.epoch && stateRef.current.project.id === proposal.projectId) {
+      dispatch({ type: 'SET_ASSET_MANIFEST', projectId: proposal.projectId, epoch: currentOwner.epoch, assets: reserved.assets.map((asset) => RegisteredAssetSchema.parse(asset)) });
+      applied = await new Promise<boolean>((resolve) => {
+        const timer = setTimeout(() => { if (applyPending.current?.proposalId === proposal.id) applyPending.current = null; resolve(false); }, 5000);
+        applyPending.current = { proposalId: proposal.id, epoch: currentOwner.epoch, resolve: (success) => { clearTimeout(timer); resolve(success); } };
+        dispatch({ type: 'APPLY_AI_PROJECT_CHANGE', proposal: reserved.proposal, lease: reserved.lease });
+      });
+    }
+    await assistantRequest('proposal/ack', { ...currentOwner, proposalId: proposal.id, attemptId, applied });
+    if (!applied) throw new Error('Project đã thay đổi; bản nháp được giữ để tạo lại từ ngữ cảnh hiện hành.');
   });
   const dismiss = (proposal: ProjectProposal) => run(async () => { await assistantRequest('proposal/dismiss', { ...owner(), proposalId: proposal.id }); });
   const render = () => run(async () => {
@@ -172,7 +193,7 @@ export function useAssistant() {
   useEffect(() => { setPreviewUrl((current) => { if (current) URL.revokeObjectURL(current); return null; }); }, [profileId, projectId]);
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
-  return { status, conversation, models, model, setModel, error, busy, run, login, logout, send, apply, dismiss, render, preview, previewUrl,
+  return { status, conversation, models, model, setModel, error, busy, run, login, logout, send, apply, dismiss, render, preview, previewUrl, snapshot,
     applied: state.appliedAiProposalIds, applyError: state.assistantApplyError,
     cancelLogin: () => run(async () => { await assistantRequest('login/cancel', {}); await refreshStatus(); }),
     selectProfile: (profileId: string) => run(async () => { setConversation(null); dispatch({ type: 'SET_ASSISTANT_SESSION', epoch: null }); await assistantRequest('profile', { profileId }); await refreshStatus(); }),

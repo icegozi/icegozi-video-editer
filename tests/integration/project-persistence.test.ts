@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ProjectStorage } from '../../src/infrastructure/storage/ProjectStorage';
+import { ProjectStorage } from '../../src/editor/persistence/ProjectStorage';
 import { mockProject } from '../fixtures/mock-project';
 import { VideoProject } from '../../src/domain/video/VideoProject';
 import { editorReducer } from '../../src/editor/state/editorStore';

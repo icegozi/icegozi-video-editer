@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderService } from '../../src/application/render/renderService';
+import { renderService } from '../../src/infrastructure/render/renderService';
 import { RenderProfile } from '../../src/config/render.config';
 import { mockProject } from '../fixtures/mock-project';
 import { VideoProject } from '../../src/domain/video/VideoProject';

@@ -301,6 +301,13 @@ export const AssetPanel: React.FC = () => {
           gap: '2px',
         }}
       >
+        {state.registeredAssets.filter((asset) => (filter === 'all' || filter === asset.mediaType) && (!searchQuery || asset.storageKey.toLowerCase().includes(searchQuery.toLowerCase()))).map((asset) => (
+          <div key={`registered-${asset.id}`} style={{ padding: '8px 10px', border: '1px solid var(--color-border-subtle)', borderRadius: 6, fontSize: 12, overflowWrap: 'anywhere' }}>
+            <strong>{asset.origin === 'generated' ? 'Cảnh đã tạo' : 'Media nhập'}</strong> · {asset.mediaType} · {asset.metadata.width} × {asset.metadata.height}
+            {asset.mediaType === 'video' && ` · ${asset.metadata.durationInSeconds.toFixed(1)}s`}
+            <div style={{ color: 'var(--text-secondary)', fontSize: 11 }}>{asset.id.slice(0, 8)} · {state.project.scenes.some((scene) => 'src' in scene && scene.src === asset.storageKey) ? 'Đang dùng trong timeline' : 'Chưa thêm vào timeline'}</div>
+          </div>
+        ))}
         {filteredScenes.length === 0 ? (
           <div
             style={{

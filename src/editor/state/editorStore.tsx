@@ -4,10 +4,23 @@ import { SceneConfig } from '../../domain/video/Scene';
 import { AudioTrackConfig } from '../../domain/video/AudioTrack';
 import { ProjectTimeline } from '../../domain/video/Timeline';
 import { buildTimeline } from '../../application/timeline/buildTimeline';
+import {
+  addAudioTrack,
+  addScene,
+  deleteAudioTrack,
+  deleteScene,
+  duplicateScene,
+  setSubtitles,
+  setTrackSetting,
+  splitScene,
+  updateAudioTrack,
+  updateProjectMetadata,
+  updateScene,
+} from '../../application/timeline/projectCommands';
 import { demoProject } from '../../../projects/demo/project';
-import { generateId } from '../../shared/utils/id';
 import { validateProposal, validateLockedContent } from '../../application/assistant/projectProposals';
-import type { ProjectProposal } from '../../shared/types/assistant';
+import type { ProjectProposal, ProposalLease } from '../../application/assistant/assistant.contracts';
+import type { RegisteredAsset } from '../../application/scene-generation/generation.contracts';
 
 export type PersistenceStatus = 'saved' | 'dirty' | 'saving' | 'error';
 
@@ -30,6 +43,7 @@ export interface EditorState {
   historyPast: VideoProject[];
   historyFuture: VideoProject[];
   assistantEpoch: string | null;
+  registeredAssets: RegisteredAsset[];
   appliedAiProposalIds: string[];
   assistantApplyError: string | null;
   workspaceMode: 'ai' | 'edit' | 'preview';
@@ -40,7 +54,8 @@ export interface EditorState {
 
 export type EditorAction =
   | { type: 'SET_ASSISTANT_SESSION'; epoch: string | null }
-  | { type: 'APPLY_AI_PROJECT_CHANGE'; proposal: ProjectProposal }
+  | { type: 'APPLY_AI_PROJECT_CHANGE'; proposal: ProjectProposal; lease?: ProposalLease }
+  | { type: 'SET_ASSET_MANIFEST'; projectId: string; epoch: string; assets: RegisteredAsset[] }
   | { type: 'SET_WORKSPACE_MODE'; mode: 'ai' | 'edit' | 'preview' }
   | { type: 'SET_INSPECTOR_OPEN'; open: boolean }
   | { type: 'TOGGLE_INSPECTOR' }
@@ -121,6 +136,7 @@ export function createInitialState(initialProject: VideoProject = demoProject): 
     historyPast: [],
     historyFuture: [],
     assistantEpoch: null,
+    registeredAssets: [],
     appliedAiProposalIds: [],
     assistantApplyError: null,
     workspaceMode: 'ai',
@@ -206,13 +222,18 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return { ...state, activeLeftTab: action.tab };
 
     case 'SET_ASSISTANT_SESSION':
-      return { ...state, assistantEpoch: action.epoch, assistantApplyError: null };
+      return { ...state, assistantEpoch: action.epoch, registeredAssets: state.assistantEpoch === action.epoch ? state.registeredAssets : [], assistantApplyError: null };
+
+    case 'SET_ASSET_MANIFEST':
+      return action.projectId === state.project.id && action.epoch === state.assistantEpoch ? { ...state, registeredAssets: action.assets } : state;
 
     case 'APPLY_AI_PROJECT_CHANGE': {
       try {
         if (state.appliedAiProposalIds.includes(action.proposal.id)) throw new Error('Proposal đã được áp dụng.');
         if (state.appliedAiProposalIds.length >= 1000) throw new Error('Hãy mở lại project để bắt đầu phiên chỉnh sửa mới.');
-        const proposal = validateProposal(state.project, state.revision, state.assistantEpoch, action.proposal);
+        if (action.lease && action.lease.expiresAt <= Date.now()) throw new Error('Lần áp dụng đã hết thời gian; bản nháp được giữ.');
+        const proposal = validateProposal(state.project, state.revision, state.assistantEpoch, action.proposal,
+          { allowedNewAssetKeys: new Set(state.registeredAssets.map((asset) => asset.storageKey)), mediaMetadata: new Map(state.registeredAssets.map((asset) => [asset.storageKey, asset.metadata])) });
         return { ...pushHistory(state, proposal.candidate), appliedAiProposalIds: [...state.appliedAiProposalIds, proposal.id], assistantApplyError: null };
       } catch (error) {
         return { ...state, assistantApplyError: error instanceof Error ? error.message : 'Proposal không hợp lệ.' };
@@ -259,156 +280,72 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return { ...state, editError: null };
 
     case 'ADD_SCENE': {
-      const newScenes = [...state.project.scenes, action.scene];
-      const nextState = pushHistory(state, { ...state.project, scenes: newScenes });
+      const command = addScene(state.project, action.scene);
+      const nextState = pushHistory(state, command.project);
       if (nextState.project === state.project) return nextState;
-      return { ...nextState, selectedClipId: action.scene.id };
+      return { ...nextState, selectedClipId: command.selectedClipId ?? nextState.selectedClipId };
     }
 
     case 'UPDATE_SCENE': {
-      const updatedScenes = state.project.scenes.map((s) =>
-        s.id === action.sceneId ? ({ ...s, ...action.updates } as SceneConfig) : s
-      );
-      return pushHistory(state, { ...state.project, scenes: updatedScenes });
+      return pushHistory(state, updateScene(state.project, action.sceneId, action.updates));
     }
 
     case 'DELETE_SCENE': {
-      if (state.project.scenes.length <= 1) return state; // Preserve at least 1 scene
-      const filteredScenes = state.project.scenes.filter((s) => s.id !== action.sceneId);
-      return pushHistory(state, { ...state.project, scenes: filteredScenes });
+      const nextProject = deleteScene(state.project, action.sceneId);
+      return nextProject === state.project ? state : pushHistory(state, nextProject);
     }
 
     case 'SPLIT_SCENE': {
-      const sceneIndex = state.project.scenes.findIndex((s) => s.id === action.sceneId);
-      if (sceneIndex === -1) return state;
-
-      const computedScene = state.timeline.computedScenes[sceneIndex];
-      const offsetInScene = action.atFrame - computedScene.startFrame;
-
-      // Only split if at least 5 frames from start and end
-      if (offsetInScene <= 5 || offsetInScene >= computedScene.durationInFrames - 5) {
+      try {
+        const command = splitScene(
+          state.project,
+          state.timeline,
+          action.sceneId,
+          action.atFrame,
+          action.newSceneId,
+        );
+        if (command.project === state.project) return state;
+        const nextState = pushHistory(state, command.project);
+        if (nextState.project === state.project) return nextState;
+        return {
+          ...nextState,
+          selectedClipId: command.selectedClipId ?? nextState.selectedClipId,
+        };
+      } catch (error) {
         return {
           ...state,
-          editError: 'Điểm chia phải cách đầu và cuối scene ít nhất 5 frames.',
+          editError: error instanceof Error ? error.message : String(error),
         };
       }
-
-      const originalScene = state.project.scenes[sceneIndex];
-
-      // Validate against incoming crossfade duration
-      const incomingCrossfade =
-        computedScene.incomingTransition?.type === 'crossfade'
-          ? computedScene.incomingTransition.durationInFrames
-          : 0;
-      if (offsetInScene <= incomingCrossfade) {
-        return {
-          ...state,
-          editError: `Không thể chia scene ở frame ${offsetInScene}: vi phạm incoming crossfade (${incomingCrossfade} frames).`,
-        };
-      }
-
-      // Validate against outgoing transition duration
-      const outgoingTransition = originalScene.transition
-        ? originalScene.transition.durationInFrames
-        : 0;
-      if (originalScene.durationInFrames - offsetInScene <= outgoingTransition) {
-        return {
-          ...state,
-          editError: `Không thể chia scene: phần sau quá ngắn so với outgoing transition (${outgoingTransition} frames).`,
-        };
-      }
-
-      const scenePart1: SceneConfig = {
-        ...originalScene,
-        transition: undefined, // First half has no outgoing transition (Finding I4)
-        durationInFrames: offsetInScene,
-      };
-
-      // Calculate consumed source frames for video to prevent repeating source in part 2
-      const consumedSourceFrames = originalScene.type === 'video'
-        ? Math.round(offsetInScene * (originalScene.playbackRate ?? 1))
-        : 0;
-
-      const newId = action.newSceneId ?? `${originalScene.id}_split_${generateId('part')}`;
-
-      const scenePart2: SceneConfig = {
-        ...originalScene,
-        id: newId,
-        durationInFrames: originalScene.durationInFrames - offsetInScene,
-        transition: originalScene.transition, // Second half retains original outgoing transition
-        ...(originalScene.type === 'video'
-          ? {
-              startFromFrame: (originalScene.startFromFrame ?? 0) + consumedSourceFrames,
-            }
-          : {}),
-      };
-
-      const newScenes = [
-        ...state.project.scenes.slice(0, sceneIndex),
-        scenePart1,
-        scenePart2,
-        ...state.project.scenes.slice(sceneIndex + 1),
-      ];
-
-      const nextState = pushHistory(state, { ...state.project, scenes: newScenes });
-      if (nextState.project === state.project) return nextState;
-      return {
-        ...nextState,
-        selectedClipId: scenePart2.id,
-      };
     }
 
     case 'DUPLICATE_SCENE': {
-      const scene = state.project.scenes.find((s) => s.id === action.sceneId);
-      if (!scene) return state;
-
-      const newId = action.newSceneId ?? `${scene.id}_copy_${generateId('dup')}`;
-      const duplicated: SceneConfig = {
-        ...scene,
-        id: newId,
-      };
-
-      const sceneIndex = state.project.scenes.findIndex((s) => s.id === action.sceneId);
-      const newScenes = [
-        ...state.project.scenes.slice(0, sceneIndex + 1),
-        duplicated,
-        ...state.project.scenes.slice(sceneIndex + 1),
-      ];
-
-      const nextState = pushHistory(state, { ...state.project, scenes: newScenes });
+      const command = duplicateScene(state.project, action.sceneId, action.newSceneId);
+      if (command.project === state.project) return state;
+      const nextState = pushHistory(state, command.project);
       if (nextState.project === state.project) return nextState;
-      return { ...nextState, selectedClipId: newId };
+      return {
+        ...nextState,
+        selectedClipId: command.selectedClipId ?? nextState.selectedClipId,
+      };
     }
 
     case 'ADD_AUDIO_TRACK': {
-      const tracks = [...(state.project.audioTracks ?? []), action.track];
-      return pushHistory(state, { ...state.project, audioTracks: tracks });
+      return pushHistory(state, addAudioTrack(state.project, action.track));
     }
 
     case 'UPDATE_AUDIO_TRACK': {
-      if (!state.project.audioTracks) return state;
-      const updatedTracks = state.project.audioTracks.map((t) =>
-        t.id === action.trackId ? ({ ...t, ...action.updates } as AudioTrackConfig) : t
-      );
-      return pushHistory(state, { ...state.project, audioTracks: updatedTracks });
+      const nextProject = updateAudioTrack(state.project, action.trackId, action.updates);
+      return nextProject === state.project ? state : pushHistory(state, nextProject);
     }
 
     case 'DELETE_AUDIO_TRACK': {
-      if (!state.project.audioTracks) return state;
-      const filtered = state.project.audioTracks.filter((t) => t.id !== action.trackId);
-      return pushHistory(state, { ...state.project, audioTracks: filtered });
+      const nextProject = deleteAudioTrack(state.project, action.trackId);
+      return nextProject === state.project ? state : pushHistory(state, nextProject);
     }
 
     case 'SET_TRACK_SETTING': {
-      const current = state.project.trackSettings ?? {};
-      const updated = {
-        ...current,
-        [action.trackId]: {
-          ...(current[action.trackId] ?? {}),
-          ...action.setting,
-        },
-      };
-      const candidateProject = { ...state.project, trackSettings: updated };
+      const candidateProject = setTrackSetting(state.project, action.trackId, action.setting);
       try {
         const newTimeline = buildTimeline(candidateProject);
         return {
@@ -431,11 +368,11 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     }
 
     case 'SET_SUBTITLES': {
-      return pushHistory(state, { ...state.project, subtitles: action.subtitles });
+      return pushHistory(state, setSubtitles(state.project, action.subtitles));
     }
 
     case 'UPDATE_PROJECT_METADATA': {
-      return pushHistory(state, { ...state.project, ...action.updates });
+      return pushHistory(state, updateProjectMetadata(state.project, action.updates));
     }
 
     case 'LOAD_PROJECT': {
@@ -461,6 +398,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
           historyPast: [],
           historyFuture: [],
           assistantEpoch: null,
+          registeredAssets: [],
           assistantApplyError: null,
         };
       } catch (err) {

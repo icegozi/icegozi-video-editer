@@ -6,8 +6,18 @@ import { DEV_PROJECT_META, devPort, devProjectId, existingDevServer } from '../.
 const projectRoot = path.resolve('.');
 let server: http.Server | undefined;
 
-async function listen(html: string, delayMs = 0): Promise<number> {
-  server = http.createServer((_req, res) => {
+async function listen(html: string, delayMs = 0, brokenModule?: string): Promise<number> {
+  server = http.createServer((req, res) => {
+    if (req.url === '/@vite/client' || req.url === '/src/editor/main.tsx') {
+      if (req.url === brokenModule) {
+        res.writeHead(504, 'Outdated Request');
+        res.end();
+      } else {
+        res.setHeader('Content-Type', 'application/javascript');
+        res.end('export {};');
+      }
+      return;
+    }
     res.setHeader('Content-Type', 'text/html');
     if (delayMs) setTimeout(() => res.end(html), delayMs);
     else res.end(html);
@@ -34,6 +44,12 @@ describe('Dev server startup', () => {
     const port = await listen(`<meta name="${DEV_PROJECT_META}" content="${devProjectId(projectRoot)}">`, 3200);
     await expect(existingDevServer(projectRoot, port)).resolves.toBe(`http://127.0.0.1:${port}`);
   }, 10000);
+
+  it.each(['/@vite/client', '/src/editor/main.tsx'])('rejects a matching server with a closed transform environment: %s', async (brokenModule) => {
+    const port = await listen(`<meta name="${DEV_PROJECT_META}" content="${devProjectId(projectRoot)}">`, 0, brokenModule);
+    await expect(existingDevServer(projectRoot, port)).rejects.toThrow('JavaScript is not responding');
+    expect((await fetch(`http://127.0.0.1:${port}`)).status).toBe(200);
+  });
 
   it('rejects another application without stopping its server', async () => {
     const port = await listen('<title>Another app</title>');

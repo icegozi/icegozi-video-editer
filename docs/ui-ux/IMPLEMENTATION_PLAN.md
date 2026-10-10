@@ -86,13 +86,12 @@ graph TD
 
 - `src/editor/tokens/editor.css`
 - `src/editor/tokens/colors.ts`
-- `src/editor/tokens/typography.ts`
-- `src/editor/tokens/spacing.ts`
+- typography and spacing CSS variables in `src/editor/tokens/editor.css`
 - `src/editor/components/ui/*` (mới và mở rộng)
 - `src/editor/components/shell/*` (`EditorShell.tsx`, `CommandBar.tsx`, `LeftWorkspace.tsx`, `ResizablePanel.tsx`)
 - `src/editor/components/preview/*` (`PreviewWorkspace.tsx`, `TransportControls.tsx`, `CanvasToolbar.tsx`)
 - `src/editor/components/timeline/*` (`Timeline.tsx`, `TimelineToolbar.tsx`, `TimelineRuler.tsx`, `TimelineTrackHeader.tsx`, `TimelineClip.tsx`)
-- `src/editor/components/chat/*` (`AiChatPanel.tsx`, `PromptComposer.tsx`, `ProposalCard.tsx`, `ContextChipsBar.tsx`)
+- `src/editor/components/assistant/*` (`AiChatPanel.tsx`, `PromptComposer.tsx`, `ProposalCard.tsx`, `ContextChipsBar.tsx`)
 - `src/editor/components/assets/*` (`AssetPanel.tsx`)
 - `src/editor/components/inspector/*` (`InspectorPanel.tsx`, `TextInspector.tsx`, `FormulaInspector.tsx`, `MediaInspector.tsx`, `ProjectInspector.tsx`)
 - `src/editor/components/export/*` (`ExportModal.tsx`)

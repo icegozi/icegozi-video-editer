@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { createInitialState, editorReducer } from '../../src/editor/state/editorStore';
 import { projectFingerprint, validateCandidate } from '../../src/application/assistant/projectProposals';
 import { VideoProjectSchema } from '../../src/schemas/project.schema';
-import type { ProjectProposal } from '../../src/shared/types/assistant';
+import type { ProjectProposal } from '../../src/application/assistant/assistant.contracts';
 import { mockProject } from '../fixtures/mock-project';
 
 const epoch = randomUUID();
@@ -63,5 +63,13 @@ describe('AI project transactions', () => {
     expect(projectFingerprint(mockProject)).toBe(projectFingerprint(VideoProjectSchema.parse(mockProject)));
     const ordered = Object.fromEntries(Object.entries(mockProject).reverse()) as unknown as typeof mockProject;
     expect(projectFingerprint(ordered)).toBe(projectFingerprint(mockProject));
+  });
+  it('validates offsets and playback rate against managed generated video duration', () => {
+    const src = 'assets/video/generated.mp4';
+    const policy = { allowedNewAssetKeys: new Set([src]), mediaMetadata: new Map([[src, { durationInSeconds: 5 }]]) };
+    const scene = { id: 'generated', type: 'video' as const, src, durationInFrames: 150, startFromFrame: 0, playbackRate: 1 };
+    const candidate = { ...mockProject, fps: 30, scenes: [scene] };
+    expect(validateCandidate(mockProject, candidate, policy).scenes).toHaveLength(1);
+    expect(() => validateCandidate(mockProject, { ...candidate, scenes: [{ ...scene, startFromFrame: 1, playbackRate: 2 }] }, policy)).toThrow('vượt');
   });
 });

@@ -4,11 +4,13 @@ A production-grade, AI-assisted programmable video editing system built on **Rem
 
 Designed for high-precision motion graphics, mathematical formulas, text overlays, multi-track audio, and AI-generated video workflows with non-destructive media pipelines.
 
+Scene creation now includes an app-owned local vector animation core and Gemini image generation through API keys or official Google Desktop OAuth. See [setup and usage](SCENE_GENERATION.md). The Windows package ships the core, workflow skill and media validation binaries; Google credentials are entered in the app and kept outside the package.
+
 ---
 
 ## Prerequisites
 
-- **Node.js**: `v20.x` or `v24.x` (verified on Node `v24.11.0`)
+- **Node.js**: `v24.x` for the full local app and Windows package (verified on Node `v24.11.0`)
 - **FFmpeg & FFprobe**: Version 6.0+ (verified with `Gyan.FFmpeg 9.0.2-full_build`)
 - **npm**: Version 10+ (verified on `11.6.1`)
 
@@ -52,7 +54,7 @@ execution against a local synthetic Responses server without real inference.
 
 ### Video skills and LLM tools
 
-The app includes six workflows under `skills/video/`: video creation, short
+The app includes seven workflows under `skills/video/`: video creation, short
 videos, text motion, timeline edits, imported audio/captions and render checks.
 Their names and descriptions are supplied to the assistant automatically; it
 loads the relevant instructions through the app's `read_video_skill` tool.
@@ -134,7 +136,7 @@ The pipeline includes built-in cross-platform scripts for media inspection, vali
 | Command | Purpose |
 | :--- | :--- |
 | `npm run typecheck` | Run strict TypeScript validation across the entire repository. |
-| `npm run test` | Run the Vitest unit test suite (timeline math, schemas, commands, paths). |
+| `npm run test` | Run the Vitest unit/integration suite and SIWC Node checks using an isolated in-memory SQLite database. |
 | `npm run media:inspect <file>` | Probe video/audio streams and output technical JSON metadata. |
 | `npm run media:validate` | Verify all assets referenced in the project exist before rendering. |
 | `npm run media:normalize <file>` | Standardize any video to 1080p, 30fps H.264 into `generated/normalized/`. |
@@ -157,24 +159,26 @@ Extracts a lossless PNG at the specified second into `generated/frames/`.
 icegozi_video/
 ├── src/
 │   ├── app/                 # Root.tsx, compositions registration
-│   ├── video/               # Remotion primitives, transitions, scenes, MainVideo
+│   ├── video/               # Remotion primitives, transitions, scenes, compositions
 │   │   ├── components/      # VideoFrame, MediaLayer, AudioLayer, TextOverlay, FormulaOverlay, SubtitleLayer, SafeArea
 │   │   ├── scenes/          # SceneRegistry, SceneRenderer, and scene implementations
 │   │   ├── transitions/     # CrossFade, Fade
-│   │   └── compositions/    # MainVideo orchestrator
+│   │   └── compositions/    # MainVideo and GeneratedScene implementations
 │   ├── domain/              # Pure TypeScript models (VideoProject, Scene, Timeline, Audio, Media)
-│   ├── application/         # Timeline engine, media inspection, asset validation, render prep
-│   ├── infrastructure/      # FFmpegClient, FFprobeClient, FileSystem, paths, logger
+│   ├── application/         # Assistant, scene generation, timeline commands, media/render workflows
+│   ├── editor/              # Browser UI, state, hooks, persistence, and feature components
+│   ├── infrastructure/      # DB, server, providers, render, media, FFmpeg, filesystem, logging
 │   ├── schemas/             # Zod runtime validation schemas
-│   ├── config/              # Video defaults, render profiles, paths, env
-│   └── shared/              # Pipeline error hierarchy, constants, types
+│   ├── config/              # Render profiles, paths, and environment validation
+│   └── shared/              # Owner-neutral pipeline errors and ID generation
+├── drizzle/                 # Runtime SQLite migrations and migration metadata
 ├── projects/
 │   └── demo/                # Working demo project definition
 ├── public/assets/           # READ-ONLY source video, audio, images, fonts
 ├── generated/               # Non-destructive intermediates (normalized, frames, previews)
 ├── output/                  # Final production MP4 exports
 ├── scripts/                 # Cross-platform CLI pipeline scripts
-├── tests/                   # Vitest unit test suite
+├── tests/                   # Unit, integration, E2E, and SIWC contract tests
 └── docs/                    # Architecture, workflow, and developer guides
 ```
 

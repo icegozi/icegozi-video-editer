@@ -3,12 +3,13 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { renderService } from '../../application/render/renderService';
+import { renderService } from '../render/renderService';
 import { ProjectDbService } from '../db/projectDbService';
 import { RenderProfile } from '../../config/render.config';
 import { PATHS } from '../../config/paths.config';
 import { ensureDirectories } from '../filesystem/ensureDirectories';
 import type { LocalApiServer } from './localApiServer';
+import { initDatabaseSchema } from '../db/client';
 
 export const ALLOWED_MEDIA_EXTENSIONS = new Map<
   string,
@@ -157,6 +158,7 @@ export function createRenderApi() {
   return {
     name: 'icegozi-render-api',
     configureServer(server: LocalApiServer) {
+      initDatabaseSchema();
       server.middlewares.use(async (req, res, next) => {
         const actualPort =
           (server.httpServer?.address() as any)?.port ?? server.config?.server?.port ?? 3200;

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useEditor } from '../state/editorStore';
-import { ProjectStorage } from '../../infrastructure/storage/ProjectStorage';
+import { ProjectStorage } from '../persistence/ProjectStorage';
 
 export function useKeyboardShortcuts() {
   const { state, dispatch } = useEditor();

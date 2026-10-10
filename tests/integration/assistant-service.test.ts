@@ -3,9 +3,10 @@ import { randomUUID } from 'node:crypto';
 import { AssistantService } from '../../src/application/assistant/assistantService';
 import { fakeAssistantAuth, fakeAssistantRuntime } from '../fixtures/assistant-fixtures';
 import { mockProject } from '../fixtures/mock-project';
-import type { AssistantEvent } from '../../src/shared/types/assistant';
+import type { AssistantEvent } from '../../src/application/assistant/assistant.contracts';
 import { validLocalRequest } from '../../src/infrastructure/server/codexApiPlugin';
 import type { IncomingMessage } from 'node:http';
+import { createInitialState, editorReducer } from '../../src/editor/state/editorStore';
 
 const snapshot = () => ({ project: structuredClone(mockProject), revision: 1, selectedClipId: 'scene-1', playhead: 0 });
 async function fixture() {
@@ -21,6 +22,26 @@ async function fixture() {
   return { runtime, auth, create, job, cancel, service, view, send, tool };
 }
 describe('Local assistant isolation and side effects', () => {
+  it('reserves a draft without consuming it, rejects competing tabs and keeps it after a stale reducer apply', async () => {
+    const f = await fixture(); await f.send();
+    f.tool('propose_project_change', { summary: 'Reserve fixture', candidate: { ...mockProject, title: 'Reserved draft' } });
+    await vi.waitFor(async () => expect((await f.service.open(snapshot())).proposals).toHaveLength(1));
+    const proposal = (await f.service.open(snapshot())).proposals[0]; const attemptId = randomUUID();
+    const reserved = await f.service.reserveProposal(f.view.id, f.view.epoch, proposal.id, attemptId, snapshot());
+    await expect(f.service.reserveProposal(f.view.id, f.view.epoch, proposal.id, randomUUID(), snapshot())).rejects.toThrow('Tab khác');
+    await expect(f.service.consumeProposal(f.view.id, f.view.epoch, proposal.id, snapshot())).rejects.toThrow('tab');
+    const edited = { ...createInitialState(mockProject), assistantEpoch: f.view.epoch, revision: 2, project: { ...mockProject, title: 'Manual edit during HTTP' } };
+    const rejected = editorReducer(edited, { type: 'APPLY_AI_PROJECT_CHANGE', proposal: reserved.proposal, lease: reserved.lease });
+    expect(rejected.project).toBe(edited.project); expect(rejected.assistantApplyError).toBeTruthy();
+    await f.service.acknowledgeProposal(f.view.id, f.view.epoch, proposal.id, attemptId, false);
+    expect((await f.service.open(snapshot())).proposals).toHaveLength(1);
+    const secondId = randomUUID(); const retried = await f.service.reserveProposal(f.view.id, f.view.epoch, proposal.id, secondId, snapshot());
+    const applied = editorReducer({ ...createInitialState(mockProject), assistantEpoch: f.view.epoch }, { type: 'APPLY_AI_PROJECT_CHANGE', proposal: retried.proposal, lease: retried.lease });
+    expect(applied.historyPast).toHaveLength(1); expect(applied.project.title).toBe('Reserved draft');
+    await f.service.acknowledgeProposal(f.view.id, f.view.epoch, proposal.id, secondId, true);
+    await f.service.acknowledgeProposal(f.view.id, f.view.epoch, proposal.id, secondId, true);
+    expect((await f.service.open(snapshot())).proposals).toHaveLength(0); f.service.dispose();
+  });
   it('enforces exact Host/Origin and capability including event reads', () => {
     const request = (headers: IncomingMessage['headers']) => ({ headers }) as IncomingMessage;
     const valid = { host: '127.0.0.1:3200', origin: 'http://127.0.0.1:3200', 'x-icegozi-capability': 'fixture-cap' };
@@ -168,7 +189,7 @@ describe('Local assistant isolation and side effects', () => {
     f.tool('read_video_skill', { skillId: 'icegozi-text-motion' }, randomUUID(), 302);
     f.tool('validate_project_change', { candidate: { ...mockProject, scenes: [{ id: 'title-a', type: 'text', title: 'A', durationInFrames: 150, animationType: 'scale', startScale: 0 }] } }, randomUUID(), 303);
     await vi.waitFor(() => expect(response(303)).toBeDefined());
-    expect(JSON.parse(response(301)!.contentItems[0].text).skills).toHaveLength(6);
+    expect(JSON.parse(response(301)!.contentItems[0].text).skills).toHaveLength(7);
     expect(JSON.parse(response(302)!.contentItems[0].text).name).toBe('icegozi-text-motion');
     const validation = JSON.parse(response(303)!.contentItems[0].text);
     expect(validation.valid).toBe(false);
