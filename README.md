@@ -22,9 +22,53 @@ On Windows with Node 24, run `npm ci` then `npm run dev` and open
 **http://127.0.0.1:3200**. Navigate to **AI Studio** tab → click **Đăng nhập**.
 The local SIWC integration uses each user's own account and plan permission.
 See [setup, licensing, security limits and verification](ASSISTANT_INTEGRATION.md).
-The pinned runtime is Codex 0.160.1; static `dist` alone has no Node bridge.
+If `npm run dev` is run again while this project's editor is already running,
+it reports the existing URL instead of starting a duplicate server. To restart,
+press `Ctrl+C` in the original server terminal first. If another app owns port
+3200, stop that app or choose a port with `npm run dev -- --port 3201`.
+The pinned runtime is Codex 0.160.1. `npm run build:app` builds the editor and
+its local backend; `npm start` runs the built app with AI and render endpoints.
 The MVP is for personal noncommercial use; paid, business or hosted use needs
 provider/licensing review. No API-key fallback or billing management is included.
+
+### Windows package
+
+Build on Windows with Node 24:
+
+```powershell
+npm run package:windows
+```
+
+The command creates a portable folder under `build/releases/`. Run
+`Start ICEGOZI.cmd` in that folder. It includes Node, production dependencies,
+Codex, the Code Mode host and Chrome Headless Shell for rendering; Vite and a
+global Codex installation are unnecessary.
+Each user signs in with their own ChatGPT account. Writable projects, uploads
+and renders use `%LOCALAPPDATA%/icegozi-video/workspace`; credentials stay in
+the user's DPAPI-protected assistant storage and are excluded from the package.
+Set `ICEGOZI_PORT` to change the default 3200 port, or `ICEGOZI_DATA_DIR` to
+choose a workspace directory. `npm run codex:check-tools` tests native tool
+execution against a local synthetic Responses server without real inference.
+
+### Video skills and LLM tools
+
+The app includes six workflows under `skills/video/`: video creation, short
+videos, text motion, timeline edits, imported audio/captions and render checks.
+Their names and descriptions are supplied to the assistant automatically; it
+loads the relevant instructions through the app's `read_video_skill` tool.
+The package includes the same files and does not need personal Codex skills.
+
+The tool registry is in `src/application/assistant/editorTools.ts`. The LLM can
+inspect live schemas with `get_editor_capabilities`, read the current project,
+validate a candidate, propose a reviewed change, and request an approved preview
+or final render. Unsupported fields are rejected rather than silently ignored.
+Code Mode tool results are JSON strings and must be decoded with `JSON.parse`.
+Toolset updates start a fresh native thread while retaining the UI chat history.
+
+Example request: `Dùng skill icegozi-text-motion, tạo chữ A trắng trên nền đen,
+phóng từ nhỏ đến lớn trong 5 giây.` Review the draft and click **Duyệt & Áp dụng**,
+then ask for a preview or final render. Current media-generation/transcription
+capabilities are explicitly reported by the catalog; imported assets can be used.
 
 ### 1. Installation
 

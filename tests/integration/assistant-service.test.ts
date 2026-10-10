@@ -160,4 +160,54 @@ describe('Local assistant isolation and side effects', () => {
     expect(third.requests.filter((r) => r.method === 'turn/start')).toHaveLength(1);
     service.dispose();
   });
+
+  it('loads app skills and returns field errors without creating a draft or render', async () => {
+    const f = await fixture(); await f.send();
+    const response = (id: number) => f.runtime.requests.find((message) => message.id === id && message.result)?.result as { success: boolean; contentItems: { text: string }[] } | undefined;
+    f.tool('get_editor_capabilities', {}, randomUUID(), 301);
+    f.tool('read_video_skill', { skillId: 'icegozi-text-motion' }, randomUUID(), 302);
+    f.tool('validate_project_change', { candidate: { ...mockProject, scenes: [{ id: 'title-a', type: 'text', title: 'A', durationInFrames: 150, animationType: 'scale', startScale: 0 }] } }, randomUUID(), 303);
+    await vi.waitFor(() => expect(response(303)).toBeDefined());
+    expect(JSON.parse(response(301)!.contentItems[0].text).skills).toHaveLength(6);
+    expect(JSON.parse(response(302)!.contentItems[0].text).name).toBe('icegozi-text-motion');
+    const validation = JSON.parse(response(303)!.contentItems[0].text);
+    expect(validation.valid).toBe(false);
+    expect(validation.errors[0].path).toEqual(['scenes', 0, 'startScale']);
+    expect((await f.service.open(snapshot())).proposals).toHaveLength(0);
+    expect(f.create).not.toHaveBeenCalled();
+    f.service.dispose();
+  });
+
+  it('requires approval for a final render and preserves its profile', async () => {
+    const f = await fixture(); await f.send();
+    f.tool('render_project', { profile: 'final' });
+    await vi.waitFor(async () => expect((await f.service.open(snapshot())).approvals).toHaveLength(1));
+    expect(f.create).not.toHaveBeenCalled();
+    await f.service.approval(f.view.id, f.view.epoch, '200', 'accept');
+    await vi.waitFor(() => expect(f.create).toHaveBeenCalledWith(expect.objectContaining({ id: mockProject.id }), 'final'));
+    expect((await f.service.open(snapshot())).renders[0].profile).toBe('final');
+    f.service.dispose();
+  });
+
+  it('refreshes an outdated toolset with a new native thread while retaining UI history', async () => {
+    let saved: unknown = [];
+    const persistence = { read: () => structuredClone(saved), write: (data: unknown) => { saved = structuredClone(data); } };
+    const renderer = { create: () => ({ id: 'unused' }), status: () => null, cancel: () => true };
+    const auth = fakeAssistantAuth();
+    const firstRuntime = await fakeAssistantRuntime();
+    const first = new AssistantService(auth, renderer, '/fixture', async () => firstRuntime.rpc, persistence);
+    const firstView = await first.open(snapshot());
+    await first.send(firstView.id, firstView.epoch, randomUUID(), 'Old chat to preserve', 'fixture-model', snapshot());
+    first.dispose();
+    (saved as { toolsetVersion?: string }[])[0].toolsetVersion = 'old-toolset';
+    const nextRuntime = await fakeAssistantRuntime();
+    const next = new AssistantService(auth, renderer, '/fixture', async () => nextRuntime.rpc, persistence);
+    const restored = await next.open(snapshot());
+    await next.send(restored.id, restored.epoch, randomUUID(), 'Use new skills', 'fixture-model', snapshot());
+    expect(nextRuntime.requests.some((message) => message.method === 'thread/resume')).toBe(false);
+    const started = nextRuntime.requests.find((message) => message.method === 'thread/start')!.params as { dynamicTools: { tools: { name: string }[] }[] };
+    expect(started.dynamicTools[0].tools.some((tool) => tool.name === 'read_video_skill')).toBe(true);
+    expect((await next.open(snapshot())).messages[0].text).toBe('Old chat to preserve');
+    next.dispose();
+  });
 });

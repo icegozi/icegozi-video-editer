@@ -12,6 +12,10 @@ export const TextScene: React.FC<SceneComponentProps<TextSceneConfig>> = ({ scen
         subtitle={scene.subtitle}
         textColor={scene.textColor || '#FFFFFF'}
         animationType={scene.animationType || 'fade'}
+        fontSize={scene.fontSize}
+        startScale={scene.startScale}
+        endScale={scene.endScale}
+        durationInFrames={scene.durationInFrames}
       />
     </VideoFrame>
   );

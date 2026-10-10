@@ -260,6 +260,8 @@ class RenderService {
       `--codec=${profileSettings.codec}`,
       `--pixel-format=${profileSettings.pixelFormat}`,
       `--scale=${job.profile === RenderProfile.Preview ? 0.5 : 1}`,
+      `--public-dir=${path.dirname(PATHS.publicAssets)}`,
+      ...(process.env.ICEGOZI_BROWSER_EXECUTABLE ? [`--browser-executable=${process.env.ICEGOZI_BROWSER_EXECUTABLE}`] : []),
       '--gl=angle',
     ];
 

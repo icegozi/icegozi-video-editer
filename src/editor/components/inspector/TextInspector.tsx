@@ -63,10 +63,22 @@ export const TextInspector: React.FC<TextInspectorProps> = ({ scene }) => {
             { value: 'fade', label: 'Làm mờ (Fade)' },
             { value: 'slide-up', label: 'Trượt lên (Slide Up)' },
             { value: 'typewriter', label: 'Máy đánh chữ (Typewriter)' },
+            { value: 'scale', label: 'Phóng to / thu nhỏ (Scale)' },
           ]}
-          onChange={(e) => update({ animationType: e.target.value as any })}
+          onChange={(e) => update({ animationType: e.target.value as TextSceneConfig['animationType'] })}
         />
       </div>
+
+      <Input label="Cỡ chữ (px)" type="number" min={8} max={512} value={scene.fontSize ?? 72}
+        onChange={(e) => { const value = Number(e.target.value); if (Number.isFinite(value) && value >= 8 && value <= 512) update({ fontSize: value }); }} />
+      {scene.animationType === 'scale' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          <Input label="Tỉ lệ đầu" type="number" min={0.01} max={20} step={0.05} value={scene.startScale ?? 0.25}
+            onChange={(e) => { const value = Number(e.target.value); if (Number.isFinite(value) && value >= 0.01 && value <= 20) update({ startScale: value }); }} />
+          <Input label="Tỉ lệ cuối" type="number" min={0.01} max={20} step={0.05} value={scene.endScale ?? 1.5}
+            onChange={(e) => { const value = Number(e.target.value); if (Number.isFinite(value) && value >= 0.01 && value <= 20) update({ endScale: value }); }} />
+        </div>
+      )}
 
       {/* Duration */}
       <div>

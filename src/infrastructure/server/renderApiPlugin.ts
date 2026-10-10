@@ -1,4 +1,4 @@
-import type { Plugin, ViteDevServer } from 'vite';
+import type { Plugin } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -8,6 +8,7 @@ import { ProjectDbService } from '../db/projectDbService';
 import { RenderProfile } from '../../config/render.config';
 import { PATHS } from '../../config/paths.config';
 import { ensureDirectories } from '../filesystem/ensureDirectories';
+import type { LocalApiServer } from './localApiServer';
 
 export const ALLOWED_MEDIA_EXTENSIONS = new Map<
   string,
@@ -96,6 +97,15 @@ interface JsonReadResult<T = any> {
   error?: string;
 }
 
+export function renderOutputInScope(file: string, directories: readonly string[] = [PATHS.previews, PATHS.output]): boolean {
+  const output = fs.realpathSync(file);
+  return directories.some((directory) => {
+    if (!fs.existsSync(directory)) return false;
+    const relative = path.relative(fs.realpathSync(directory), output);
+    return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+  });
+}
+
 export async function readBoundedJson(
   req: IncomingMessage,
   maxBytes = 1024 * 1024
@@ -140,9 +150,13 @@ export async function readBoundedJson(
  * Seamlessly integrates SQLite database persistence with the editor without requiring an extra server process.
  */
 export function renderApiPlugin(): Plugin {
+  return createRenderApi();
+}
+
+export function createRenderApi() {
   return {
     name: 'icegozi-render-api',
-    configureServer(server: ViteDevServer) {
+    configureServer(server: LocalApiServer) {
       server.middlewares.use(async (req, res, next) => {
         const actualPort =
           (server.httpServer?.address() as any)?.port ?? server.config?.server?.port ?? 3200;
@@ -350,8 +364,7 @@ export function renderApiPlugin(): Plugin {
 
           // Containment check for download
           const resolvedOutput = fs.realpathSync(job.outputPath);
-          const relativeToRoot = path.relative(fs.realpathSync(PATHS.root), resolvedOutput);
-          if (relativeToRoot.startsWith('..') || path.isAbsolute(relativeToRoot)) {
+          if (!renderOutputInScope(resolvedOutput)) {
             res.statusCode = 403;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ success: false, error: 'Access denied: output outside project scope' }));

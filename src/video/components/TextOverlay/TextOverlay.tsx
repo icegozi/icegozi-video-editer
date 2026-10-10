@@ -6,7 +6,11 @@ export interface TextOverlayProps {
   title: string;
   subtitle?: string;
   textColor?: string;
-  animationType?: 'fade' | 'slide-up' | 'typewriter';
+  animationType?: 'fade' | 'slide-up' | 'typewriter' | 'scale';
+  fontSize?: number;
+  startScale?: number;
+  endScale?: number;
+  durationInFrames?: number;
   align?: 'left' | 'center' | 'right';
   style?: React.CSSProperties;
 }
@@ -19,6 +23,10 @@ export const TextOverlay: React.FC<TextOverlayProps> = ({
   subtitle,
   textColor = '#FFFFFF',
   animationType = 'fade',
+  fontSize,
+  startScale = 0.25,
+  endScale = 1.5,
+  durationInFrames = 150,
   align = 'center',
   style,
 }) => {
@@ -62,8 +70,11 @@ export const TextOverlay: React.FC<TextOverlayProps> = ({
           flexDirection: 'column',
           justifyContent: 'center',
           height: '100%',
-          opacity,
+          opacity: animationType === 'scale' ? 1 : opacity,
           transform: `translateY(${translateY}px)`,
+          scale: animationType === 'scale' ? interpolate(frame, [0, Math.max(1, durationInFrames - 1)], [startScale, endScale], {
+            extrapolateLeft: 'clamp', extrapolateRight: 'clamp',
+          }) : undefined,
           color: textColor,
           fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
           textShadow: '0 4px 20px rgba(0,0,0,0.8)',
@@ -73,7 +84,7 @@ export const TextOverlay: React.FC<TextOverlayProps> = ({
       >
         <h1
           style={{
-            fontSize: '4.5rem',
+            fontSize: fontSize ?? '4.5rem',
             fontWeight: 800,
             margin: '0 0 1rem 0',
             letterSpacing: '-0.02em',

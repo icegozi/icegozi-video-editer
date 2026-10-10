@@ -22,6 +22,16 @@ both the editor and the loopback bridge. `npm run build:editor` produces a
 static frontend; serving `dist` alone does not supply authentication, chat or
 render endpoints. No SaaS deployment or Electron/Tauri shell is included.
 
+For a built local app use `npm run build:app` followed by `npm start`.
+`npm run package:windows` creates a portable Windows folder under
+`build/releases/` with `Start ICEGOZI.cmd`, Node 24, production dependencies,
+the native SQLite module, Codex, its Code Mode host and Chrome Headless Shell. This uses the same
+guarded HTTP/SSE handlers as dev, without Vite at runtime. `%LOCALAPPDATA%`
+holds writable workspace data; account credentials and environment files are
+never copied into a release. Source compositions remain available to the
+bundled Remotion CLI, which is a production dependency. This is a portable
+folder, not an Electron/Tauri installer.
+
 Click **Continue with ChatGPT**, then the visible browser link. This is an
 intentional manual browser launch: the callback listener is already running,
 and no automatic browser-launch success is mistaken for authenticated access.
@@ -50,14 +60,25 @@ this integration. Users buy/manage their own ChatGPT plan through OpenAI.
   client and verifies the same subject.
 - Codex receives only the OAuth access token in its own environment. Its home
   and cwd are isolated per registration/conversation outside the repository.
-  Shell, code mode, plugins, apps, computer/browser tools and image viewing are
-  disabled. `environments: []` removes machine environments. `on-request`
+  Code Mode and its native host are enabled to dispatch `exec` calls to the
+  app-owned video namespace. The adjacent `codex-code-mode-host` binary is
+  required and checked before startup. Shell, plugins, apps, computer/browser
+  tools and image viewing remain disabled. `environments: []` removes machine
+  environments. `on-request`
   approvals remain enabled; unexpected native machine requests are declined.
   `untrusted` appears in some generated types but is rejected by this runtime.
-- Five namespace dynamic tools are registered with the generated contract:
-  context, asset manifest, proposal, preview request and preview status. These
+- Ten namespace dynamic tools are registered with the generated contract:
+  capabilities, skill discovery/loading, context, asset manifest, candidate
+  validation, proposal, preview/final render requests and render status. These
   APIs are experimental and version pinned. Resume reuses persisted tools and
   environments; `thread/resume` has no `dynamicTools` field.
+- The app owns six small `SKILL.md` workflows under `skills/video/`. A base
+  workflow and skill metadata are injected into developer instructions; full
+  specialized content is loaded through a trusted-ID tool, not unrestricted
+  filesystem access. The package includes these instructions. The runtime's
+  Code Mode tool results are JSON strings; decode them before accessing fields.
+  A tool-contract hash prevents resuming a thread with stale dynamic tools.
+  UI history survives the refresh and recent messages remain project context.
 - OpenAI tokens never enter browser DTOs, SSE, argv, agent context, repository,
   or diagnostics. Child environments are constructed from explicit allowlists.
   Raw runtime stderr is discarded. Remote errors have curated UI messages.
@@ -72,6 +93,10 @@ a validated snapshot. Arbitrary metadata is omitted from model context; media
 bytes and repository contents are not uploaded. Filenames/subtitles are data.
 MVP supports text/formula/image/video scenes; executable composition props and
 generated JSX are excluded pending a separate sandbox design.
+Text scenes additionally support bounded `fontSize`, `startScale`, `endScale`
+and a `scale` animation calculated across each scene's own frame duration.
+The capability tool exposes the strict editable project schema; candidate
+validation returns field-level errors without creating a draft or render.
 
 Drafts are created only by the typed proposal tool, not by extracting JSON
 from prose. The bridge checks unique IDs, local assets, locks and domain rules.
@@ -140,6 +165,15 @@ test:**
    turn to verify continuation. Refresh the page to verify restored metadata.
 4. Stop a turn, switch a profile/project and log out. Check that old work cannot
    affect the new project and that tokens remain in DPAPI-protected local storage.
+
+`npm run codex:check-tools` additionally runs a native turn against a loopback
+synthetic Responses server: `exec` dispatches through the bundled Code Mode
+host to the actual app dispatcher, reads capabilities and the bundled text
+motion skill, validates a candidate and creates a growing-A draft. It completes
+the turn without automatically applying or rendering that draft. This verifies
+actual tool execution, not account entitlement or live
+model inference. The packaged folder contains the compiled equivalent at
+`build/check-code-mode.mjs`, runnable with its own `runtime/node.exe`.
 
 Record only runtime/OS/auth route/model and observed terminal status. An empty
 thread created without a turn may not be resumable; the native no-inference

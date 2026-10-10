@@ -50,6 +50,7 @@
 - `npm test`
 - `npm run build:editor`
 - `npm run dev` starts the Vite editor on port 3200 (includes render API plugin).
+- The dev launcher reuses a healthy existing editor only when its HTML project-root fingerprint matches this repository. Keep the fixed loopback host and `strictPort`; do not kill arbitrary port owners or silently move the assistant bridge to another port. Explicit `--port` overrides are supported.
 - `npm run render:preview` and `npm run render` invoke the CLI render pipeline.
 
 ## User Corrections & Database Decisions
@@ -70,8 +71,13 @@
 - Browser project state is authoritative. AI changes use `APPLY_AI_PROJECT_CHANGE` with epoch/revision/SHA-256 checks and one undo entry; `LOAD_PROJECT` is not an AI edit.
 - Credentials are encrypted with Windows current-user DPAPI outside the repository. The vendored official SIWC DevKit retains its Noncommercial License; business/hosted distribution needs separate evaluation.
 - Codex 0.160.1 uses explicit empty machine environments and only app-owned namespace tools. Generated experimental schemas are checked in; actual native startup rejects `untrusted`, so the adapter uses `on-request` and declines machine approvals.
+- Keep Code Mode and its native host enabled: current models can dispatch the video namespace through `exec`. Disabling `code_mode_host` makes inference finish without a draft. Ship and check the adjacent `codex-code-mode-host` binary alongside the pinned platform package.
+- Windows portable releases include Node 24 (matching SQLite ABI), production dependencies and a built local backend. Static `dist` alone is insufficient. User-writable media/generated/output/SQLite files use `ICEGOZI_DATA_DIR` (default `%LOCALAPPDATA%/icegozi-video/workspace`); compositions and installed binaries stay under the application root. Never package credentials, `.env` files, local databases or assistant history.
 - Wait for the owned process to close before restarting with rotated credentials; immediate respawn can race its SQLite files. Keep runtime homes separate per registration/conversation.
 - Render CLI launches Node directly with an argument array, shell disabled and a filtered environment; codec/pixel format come from the render profile.
+- 2026-10-10: User treats the app as a toolset for the LLM to make videos. Keep app-owned workflow skills under `skills/video`, ship them in releases, expose capability/schema discovery and trusted-ID skill reading, and validate candidates before proposal. Do not depend on personal Codex skills or unavailable external video tools.
+- Code Mode dynamic tool results are JSON strings, not parsed objects; workflows manipulating project data must use `JSON.parse`. Tool definitions are in `editorTools.ts`; a contract hash refreshes stale native threads while preserving UI chat. Preview/final render tools still require user approval.
+- Text scenes support `animationType: 'scale'` with bounded font size and endpoint scales. Pass the scene's own duration into `TextOverlay`; do not animate over the whole composition duration.
 
 ## UI/UX & AI Workspace Conventions
 

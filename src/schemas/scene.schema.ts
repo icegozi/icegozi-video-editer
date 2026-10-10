@@ -33,7 +33,10 @@ export const TextSceneSchema = BaseSceneSchema.extend({
   subtitle: z.string().optional(),
   backgroundColor: z.string().optional(),
   textColor: z.string().optional(),
-  animationType: z.enum(['fade', 'slide-up', 'typewriter']).optional(),
+  animationType: z.enum(['fade', 'slide-up', 'typewriter', 'scale']).optional(),
+  fontSize: z.number().min(8).max(512).optional(),
+  startScale: z.number().min(0.01).max(20).optional(),
+  endScale: z.number().min(0.01).max(20).optional(),
 });
 
 export const FormulaSceneSchema = BaseSceneSchema.extend({

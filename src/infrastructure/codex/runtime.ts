@@ -1,6 +1,6 @@
 import { spawn, execFile } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdir, realpath, readFile } from 'node:fs/promises';
+import { access, mkdir, realpath, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { JsonlClient } from './jsonlClient';
 import { AssistantError } from '../../application/assistant/errors';
@@ -19,7 +19,11 @@ export async function runtimeExecutable(): Promise<string> {
   const manifest = require.resolve(`@openai/codex-${process.platform}-${process.arch}/package.json`);
   const info = JSON.parse(await readFile(manifest, 'utf8')) as { version: string };
   if (info.version !== `${CODEX_VERSION}-${process.platform}-${process.arch}`) throw new AssistantError('runtime_version', 'Runtime không đúng phiên bản. Chạy npm ci.');
-  return realpath(path.join(path.dirname(manifest), 'vendor', target, 'bin', process.platform === 'win32' ? 'codex.exe' : 'codex'));
+  const bin = path.join(path.dirname(manifest), 'vendor', target, 'bin');
+  const host = path.join(bin, process.platform === 'win32' ? 'codex-code-mode-host.exe' : 'codex-code-mode-host');
+  try { await access(host); }
+  catch { throw new AssistantError('runtime_host_missing', 'Thiếu Code Mode host trong bộ cài. Cài lại đầy đủ gói Codex đi kèm ứng dụng.'); }
+  return realpath(path.join(bin, process.platform === 'win32' ? 'codex.exe' : 'codex'));
 }
 
 export async function checkRuntime(): Promise<{ available: boolean; version: string; message: string }> {
@@ -30,8 +34,9 @@ export async function checkRuntime(): Promise<{ available: boolean; version: str
     });
     if (version !== `codex-cli ${CODEX_VERSION}`) throw new Error('Incompatible runtime');
     return { available: true, version: CODEX_VERSION, message: 'Chỉ dùng công cụ video cho phép; dynamic tools đang thử nghiệm.' };
-  } catch {
-    return { available: false, version: CODEX_VERSION, message: 'Runtime thiếu/không tương thích. Chạy npm ci rồi mở lại app.' };
+  } catch (error) {
+    return { available: false, version: CODEX_VERSION,
+      message: error instanceof AssistantError && error.code === 'runtime_host_missing' ? error.message : 'Runtime thiếu/không tương thích. Cài lại đầy đủ bộ ứng dụng.' };
   }
 }
 
@@ -46,7 +51,8 @@ export function runtimeArguments(): string[] {
     'model_providers.openai_chatgpt_plan.supports_websockets=false',
     'web_search="disabled"', 'approval_policy="on-request"', 'sandbox_mode="read-only"',
     'shell_environment_policy.inherit="none"', 'shell_environment_policy.exclude=["*"]',
-    ...['shell_tool', 'unified_exec', 'view_image', 'multi_agent', 'multi_agent_v2', 'code_mode', 'code_mode_host', 'apps', 'plugins', 'browser_use', 'computer_use', 'image_generation', 'memories', 'hooks', 'skill_search', 'skill_mcp_dependency_install', 'workspace_dependencies', 'tool_suggest', 'goals'].map((feature) => `features.${feature}=false`),
+    'features.code_mode=true', 'features.code_mode_host=true',
+    ...['shell_tool', 'unified_exec', 'view_image', 'multi_agent', 'multi_agent_v2', 'apps', 'plugins', 'browser_use', 'computer_use', 'image_generation', 'memories', 'hooks', 'skill_search', 'skill_mcp_dependency_install', 'workspace_dependencies', 'tool_suggest', 'goals'].map((feature) => `features.${feature}=false`),
   ];
   return ['app-server', '--listen', 'stdio://', ...config.flatMap((value) => ['-c', value])];
 }

@@ -38,6 +38,7 @@ export interface AssistantProfile {
   pending?: boolean;
 }
 export interface AssistantRender {
+  profile?: 'preview' | 'final';
   requestId?: string;
   id: string;
   projectId: string;

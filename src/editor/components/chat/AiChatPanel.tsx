@@ -670,7 +670,7 @@ export const AiChatPanel: React.FC = () => {
               }}
             >
               <strong style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Video size={13} color="var(--color-primary, #3568E8)" /> Preview MP4
+                <Video size={13} color="var(--color-primary, #3568E8)" /> {job.profile === 'final' ? 'Video thành phẩm' : 'Preview MP4'}
               </strong>
               <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
                 {job.status} ({job.progress}%)

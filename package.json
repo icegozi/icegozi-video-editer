@@ -5,7 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --port 3200",
+    "dev": "tsx scripts/dev.ts --port 3200",
     "build:editor": "vite build",
     "render": "tsx scripts/render-preview.ts --profile final",
     "render:preview": "tsx scripts/render-preview.ts --profile preview",
@@ -21,7 +21,11 @@
     "media:inspect": "tsx scripts/inspect-media.ts",
     "media:validate": "tsx scripts/validate-assets.ts",
     "media:normalize": "tsx scripts/normalize-media.ts",
-    "clean:generated": "tsx scripts/clean-generated.ts"
+    "clean:generated": "tsx scripts/clean-generated.ts",
+    "build:app": "npm run build:editor && tsx scripts/build-app.ts",
+    "start": "node build/server.mjs",
+    "codex:check-tools": "tsx scripts/check-code-mode.ts",
+    "package:windows": "npm run build:app && tsx scripts/package-windows.ts"
   },
   "dependencies": {
     "@noble/hashes": "2.0.1",
@@ -40,11 +44,11 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "remotion": "^4.0.260",
-    "zod": "4.5.4"
+    "zod": "4.5.4",
+    "@remotion/cli": "^4.0.260"
   },
   "devDependencies": {
     "@playwright/test": "1.56.1",
-    "@remotion/cli": "^4.0.260",
     "@types/better-sqlite3": "^9.6.0",
     "@types/katex": "^0.16.8",
     "@types/node": "^22.13.0",
@@ -57,6 +61,7 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vite": "^6.4.4",
-    "vitest": "^3.0.5"
+    "vitest": "^3.0.5",
+    "esbuild": "0.28.1"
   }
 }

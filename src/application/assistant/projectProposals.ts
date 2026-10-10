@@ -75,6 +75,7 @@ export function validateCandidate(base: VideoProject, raw: unknown): ReturnType<
     }
   }
   validateLockedContent(base, candidate);
+  buildTimeline(candidate);
   return candidate;
 }
 

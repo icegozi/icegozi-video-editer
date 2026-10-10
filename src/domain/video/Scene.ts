@@ -31,7 +31,10 @@ export interface TextSceneConfig extends BaseSceneConfig {
   subtitle?: string;
   backgroundColor?: string;
   textColor?: string;
-  animationType?: 'fade' | 'slide-up' | 'typewriter';
+  animationType?: 'fade' | 'slide-up' | 'typewriter' | 'scale';
+  fontSize?: number;
+  startScale?: number;
+  endScale?: number;
 }
 
 export interface FormulaSceneConfig extends BaseSceneConfig {

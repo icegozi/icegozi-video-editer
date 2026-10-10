@@ -20,6 +20,7 @@ import { projectAssets } from '../../application/assistant/projectProposals';
 import { resolveAssetPath } from '../filesystem/paths';
 import type { ChatGPTClient } from '../chatgpt/devkit/types';
 import { startRuntime } from '../codex/runtime';
+import type { LocalApiServer } from './localApiServer';
 
 export interface CodexPluginOptions {
   auth?: ChatGPTClient;
@@ -51,6 +52,10 @@ async function requestBody(req: IncomingMessage): Promise<unknown> {
 }
 
 export function codexApiPlugin(options: CodexPluginOptions = {}): Plugin {
+  return createCodexBridge(options);
+}
+
+export function createCodexBridge(options: CodexPluginOptions = {}) {
   const capability = randomBytes(32).toString('base64url');
   const directory = options.directory ?? assistantDataDirectory();
   let loginUrl: string | null = null;
@@ -62,7 +67,7 @@ export function codexApiPlugin(options: CodexPluginOptions = {}): Plugin {
     openBrowser: (url) => { loginUrl = url; },
   });
   const renderer: PreviewRenderer = options.renderer ?? {
-    create: (project) => { validateAssistantAssets(VideoProjectSchema.parse(project)); return renderService.createJob(project, RenderProfile.Preview); },
+    create: (project, profile = 'preview') => { validateAssistantAssets(VideoProjectSchema.parse(project)); return renderService.createJob(project, profile === 'final' ? RenderProfile.Final : RenderProfile.Preview); },
     status: (id) => {
       const job = renderService.getJob(id);
       return job ? { status: job.status, progress: job.progress, outputReady: !!job.outputPath && fs.existsSync(job.outputPath) && fs.statSync(job.outputPath).size > 1000 } : null;
@@ -98,10 +103,17 @@ export function codexApiPlugin(options: CodexPluginOptions = {}): Plugin {
 
   return {
     name: 'icegozi-codex-api',
-    apply: 'serve',
-    transformIndexHtml() { return [{ tag: 'meta', attrs: { name: 'icegozi-capability', content: capability }, injectTo: 'head' }]; },
-    configureServer(server) {
-      origin = `http://127.0.0.1:${server.config.server.port ?? 3200}`;
+    apply: 'serve' as const,
+    capability,
+    transformIndexHtml() { return [{ tag: 'meta', attrs: { name: 'icegozi-capability', content: capability }, injectTo: 'head' as const }]; },
+    configureServer(server: LocalApiServer) {
+      const updateOrigin = () => {
+        const address = server.httpServer?.address();
+        const port = address && typeof address !== 'string' ? address.port : server.config.server.port ?? 3200;
+        origin = `http://127.0.0.1:${port}`;
+      };
+      updateOrigin();
+      server.httpServer?.on('listening', updateOrigin);
       server.httpServer?.once('close', () => { auth.cancelSignIn(); service.dispose(); closeStreams(); });
       server.middlewares.use(async (req, res, next) => {
         let url: URL;
@@ -140,7 +152,7 @@ export function codexApiPlugin(options: CodexPluginOptions = {}): Plugin {
             const job = renderService.getJob(jobId);
             if (!job?.outputPath) throw new AssistantError('render_missing', 'Không có output.', 404);
             const output = fs.realpathSync(job.outputPath);
-            const relative = path.relative(fs.realpathSync(PATHS.previews), output);
+            const relative = path.relative(fs.realpathSync(job.profile === RenderProfile.Final ? PATHS.output : PATHS.previews), output);
             if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) throw new AssistantError('output_path', 'Output ngoài phạm vi.', 403);
             res.setHeader('Content-Type', 'video/mp4');
             res.setHeader('Cache-Control', 'no-store');

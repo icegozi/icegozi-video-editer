@@ -64,6 +64,9 @@ describe('Codex JSONL lifecycle', () => {
     const argv = runtimeArguments().join(' ');
     expect(argv).toContain('env_key="ACCESS_TOKEN"');
     expect(argv).toContain('features.shell_tool=false');
+    expect(argv).toContain('features.code_mode=true');
+    expect(argv).toContain('features.code_mode_host=true');
+    expect(argv).not.toContain('features.code_mode_host=false');
     expect(argv).toContain('shell_environment_policy.inherit="none"');
     expect(argv).not.toContain('OPENAI_API_KEY');
     expect(argv).not.toContain('danger-full-access');
