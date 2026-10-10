@@ -1,0 +1,71 @@
+{
+  "phase_id": "00",
+  "patch_ids": ["UI-00"],
+  "commit_eligible": true,
+  "checks": {
+    "static_checks": {
+      "status": "PASS",
+      "commands_or_method": ["npm run typecheck"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-00/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "unit_tests": {
+      "status": "PASS",
+      "commands_or_method": ["npm test"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-00/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "integration_tests": {
+      "status": "PASS",
+      "commands_or_method": ["npm test"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-00/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "browser_e2e": {
+      "status": "PASS",
+      "commands_or_method": ["npx tsx scripts/capture-baseline.ts"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-00/screenshots/"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "visual_evidence": {
+      "status": "PASS",
+      "commands_or_method": ["Playwright screenshot capture at 1366x768 and 1920x1080"],
+      "exit_code": 0,
+      "evidence_paths": [
+        "docs/ui-ux/evidence/phase-00/screenshots/baseline_ai_focus_1366x768.png",
+        "docs/ui-ux/evidence/phase-00/screenshots/baseline_ai_focus_1920x1080.png",
+        "docs/ui-ux/evidence/phase-00/screenshots/baseline_edit_focus_1366x768.png",
+        "docs/ui-ux/evidence/phase-00/screenshots/baseline_edit_focus_1920x1080.png",
+        "docs/ui-ux/evidence/phase-00/screenshots/baseline_preview_focus_1366x768.png",
+        "docs/ui-ux/evidence/phase-00/screenshots/baseline_preview_focus_1920x1080.png"
+      ],
+      "run_kind": "real",
+      "reason": null
+    },
+    "accessibility_checks": {
+      "status": "NOT_APPLICABLE",
+      "commands_or_method": [],
+      "exit_code": null,
+      "evidence_paths": [],
+      "run_kind": "not_run",
+      "reason": "Phase 0 is an audit and baseline setup phase with no UI code changes"
+    },
+    "regression_checks": {
+      "status": "PASS",
+      "commands_or_method": ["npm test", "npm run build:editor"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-00/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    }
+  },
+  "final_status": "DONE"
+}

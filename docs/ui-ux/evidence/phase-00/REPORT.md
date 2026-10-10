@@ -1,0 +1,58 @@
+# Phase 00 — Evidence Report: Source Audit & Baseline
+
+- **Date/time (with timezone):** 2026-10-10T10:20:00+07:00
+- **Git branch / before SHA / after SHA (fill after commit):** `master` / `4b52194` / *(recorded in COMMIT_MAP.md after commit)*
+- **Scope / patch IDs / touched paths:** 
+  - Patch ID: UI-00
+  - Touched paths: `docs/ui-ux/IMPLEMENTATION_PLAN.md`, `docs/ui-ux/COMPONENT_MIGRATION_MATRIX.md`, `docs/ui-ux/EXECUTION_STATE.md`, `docs/ui-ux/evidence/INDEX.md`, `docs/ui-ux/evidence/COMMIT_MAP.md`, `docs/ui-ux/evidence/phase-00/REPORT.md`, `docs/ui-ux/evidence/phase-00/VERIFICATION.json`, `docs/ui-ux/evidence/phase-00/screenshots/*`, `scripts/capture-baseline.ts`.
+- **Baseline observations + before screenshot paths:**
+  - Ứng dụng hiện tại có layout enterprise nền sáng, nhưng các control phân tán, thiếu hệ thống primitives thống nhất (nhiều nút thẻ `<button>` và `<input>` inline).
+  - Đã chụp 6 ảnh baseline tại `docs/ui-ux/evidence/phase-00/screenshots/`:
+    - `baseline_ai_focus_1366x768.png`
+    - `baseline_ai_focus_1920x1080.png`
+    - `baseline_edit_focus_1366x768.png`
+    - `baseline_edit_focus_1920x1080.png`
+    - `baseline_preview_focus_1366x768.png`
+    - `baseline_preview_focus_1920x1080.png`
+- **Changes and rationale:**
+  - Thiết lập tài liệu quy trình, ma trận di chuyển component, durable execution state và lưu vết baseline kỹ thuật.
+  - Viết script `scripts/capture-baseline.ts` bằng Playwright để chụp ảnh thực tế mà không can thiệp vào mã nguồn logic của ứng dụng.
+- **Tested Windows OS/browser/viewport/scaling or explicitly NOT VERIFIED:**
+  - OS: Windows 11 (desktop local)
+  - Browser: Microsoft Edge / Chromium headless thông qua Playwright
+  - Viewports: 1366×768 (laptop baseline) và 1920×1080 (FHD baseline) tại scale 100%
+  - Tỷ lệ co giãn OS scaling 125%/150%: NOT VERIFIED trong Phase 0 (sẽ kiểm tra ở Phase 2 và Phase 8).
+- **Commands actually executed (command, exit code, evidence log path):**
+  - `npm run typecheck`: exit code 0
+  - `npm test`: exit code 0 (27 files, 134 vitest passed, 41 siwc passed)
+  - `npm run build:editor`: exit code 0 (built in 6.72s)
+  - `npx tsx scripts/capture-baseline.ts`: exit code 0
+- **Verification JSON path and each mandatory check status (PASS/FAIL/NOT_RUN/NOT_APPLICABLE/BLOCKED):**
+  - Path: `docs/ui-ux/evidence/phase-00/VERIFICATION.json`
+  - `static_checks`: PASS
+  - `unit_tests`: PASS
+  - `integration_tests`: PASS
+  - `browser_e2e`: PASS (baseline capture)
+  - `visual_evidence`: PASS (6 screenshots captured)
+  - `accessibility_checks`: NOT_APPLICABLE (Phase 0 audit only, no code change)
+  - `regression_checks`: PASS (all baseline test suites green)
+- **Automated tests added and results (mock transport / real-handler integration distinguished):**
+  - Baseline audit only; chưa bổ sung test mới (sẽ bổ sung từ Phase 1).
+- **Manual UI journeys actually executed and results:**
+  - Khởi động kiểm tra trên cổng 3200: chuyển đổi các mode AI Focus, Edit Focus, Preview Focus thành công không có lỗi runtime trên browser.
+- **Accessibility results:**
+  - NOT_APPLICABLE cho Phase 0 (sẽ bắt đầu đánh giá từ Phase 1 và chuyên sâu tại Phase 6).
+- **Before/after screenshots (paths, assertions, limitations):**
+  - 6 ảnh baseline chụp tại `docs/ui-ux/evidence/phase-00/screenshots/`.
+  - Khẳng định: Giao diện hiển thị đầy đủ trên cả hai độ phân giải 1366×768 và 1920×1080 mà không bị lỗi crash hoặc màn hình trắng.
+- **Performance measurements (method, numbers, or NOT MEASURED):**
+  - NOT MEASURED cho Phase 0 (sẽ đo đạc chi tiết tại Phase 7).
+- **Existing failures vs newly introduced failures:**
+  - Không có lỗi nào tồn đọng (0 failing tests). Không có lỗi mới phát sinh.
+- **Risk check (AI approvals, persistence, render, media security):**
+  - Không thay đổi logic, không thay đổi DB schema, không can thiệp thư mục media hay quy tắc bảo mật.
+- **Outstanding issues / deferred scope:**
+  - Không có. Sẵn sàng bước sang Phase 1.
+- **Phase final status:** `DONE`
+- **Commit eligibility:** true (Thỏa mãn đầy đủ tiêu chuẩn nghiệm thu của Phase 0 và quy tắc cách ly Git).
+- **Commit SHA:** *(Ghi nhận tại COMMIT_MAP.md sau khi tạo commit)*
