@@ -78,4 +78,47 @@ describe('Editor Workspace Modes & Layout States (Redesign Requirements)', () =>
     expect(state.selectedClipId).toBe(firstSceneId);
     expect(state.isInspectorOpen).toBe(true);
   });
+
+  it('strictly preserves project reference, revision, frame, and undo history across mode switches', () => {
+    let state = createInitialState(demoProject);
+    state = {
+      ...state,
+      currentFrame: 45,
+      selectedClipId: demoProject.scenes[0].id,
+      revision: 4,
+      historyPast: [demoProject],
+      saveStatus: 'saved',
+    };
+
+    const initialProject = state.project;
+    const initialRevision = state.revision;
+    const initialFrame = state.currentFrame;
+    const initialSelection = state.selectedClipId;
+    const initialHistoryLength = state.historyPast.length;
+
+    // Switch to Edit Focus
+    state = editorReducer(state, { type: 'SET_WORKSPACE_MODE', mode: 'edit' });
+    expect(state.project).toBe(initialProject);
+    expect(state.revision).toBe(initialRevision);
+    expect(state.currentFrame).toBe(initialFrame);
+    expect(state.selectedClipId).toBe(initialSelection);
+    expect(state.historyPast.length).toBe(initialHistoryLength);
+
+    // Switch to Preview Focus
+    state = editorReducer(state, { type: 'SET_WORKSPACE_MODE', mode: 'preview' });
+    expect(state.project).toBe(initialProject);
+    expect(state.revision).toBe(initialRevision);
+    expect(state.currentFrame).toBe(initialFrame);
+    expect(state.selectedClipId).toBe(initialSelection);
+    expect(state.historyPast.length).toBe(initialHistoryLength);
+
+    // Switch back to AI Focus
+    state = editorReducer(state, { type: 'SET_WORKSPACE_MODE', mode: 'ai' });
+    expect(state.project).toBe(initialProject);
+    expect(state.revision).toBe(initialRevision);
+    expect(state.currentFrame).toBe(initialFrame);
+    expect(state.selectedClipId).toBe(initialSelection);
+    expect(state.historyPast.length).toBe(initialHistoryLength);
+  });
 });
+

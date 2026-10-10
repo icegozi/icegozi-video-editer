@@ -1,12 +1,18 @@
 import React from 'react';
-import { Sparkles, Film, Plus } from 'lucide-react';
+import { Sparkles, Film } from 'lucide-react';
 import { useEditor } from '../../state/editorStore';
 import { AiChatPanel } from '../chat/AiChatPanel';
 import { AssetPanel } from '../assets/AssetPanel';
+import { Tabs } from '../ui';
 
 export const LeftWorkspace: React.FC = () => {
   const { state, dispatch } = useEditor();
   const activeTab = state.activeLeftTab || 'ai';
+
+  const workspaceTabs = [
+    { id: 'ai', label: 'AI Studio', icon: <Sparkles size={13} /> },
+    { id: 'assets', label: 'Assets & Scenes', icon: <Film size={13} /> },
+  ];
 
   return (
     <div
@@ -25,61 +31,19 @@ export const LeftWorkspace: React.FC = () => {
         style={{
           display: 'flex',
           alignItems: 'center',
-          height: '38px',
+          height: '42px',
           borderBottom: '1px solid var(--color-border-subtle, #E2E8F0)',
-          backgroundColor: 'var(--color-surface-muted, #F8FAFC)',
-          padding: '0 8px',
-          gap: '4px',
+          backgroundColor: 'var(--color-surface-muted, #F2F5FA)',
+          padding: '0 10px',
           flexShrink: 0,
         }}
       >
-        <button
-          type="button"
-          onClick={() => dispatch({ type: 'SET_ACTIVE_LEFT_TAB', tab: 'ai' })}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            height: '28px',
-            padding: '0 12px',
-            borderRadius: '6px',
-            fontSize: '12px',
-            fontWeight: activeTab === 'ai' ? 600 : 500,
-            border: activeTab === 'ai' ? '1px solid var(--color-border-default, #CBD5E1)' : '1px solid transparent',
-            backgroundColor: activeTab === 'ai' ? 'var(--color-surface, #FFFFFF)' : 'transparent',
-            color: activeTab === 'ai' ? 'var(--color-brand, #3568E8)' : 'var(--color-text-secondary, #475569)',
-            cursor: 'pointer',
-            transition: 'all 120ms ease',
-          }}
-          aria-selected={activeTab === 'ai'}
-        >
-          <Sparkles size={13} color={activeTab === 'ai' ? 'var(--color-brand, #3568E8)' : 'currentColor'} />
-          <span>AI Studio</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => dispatch({ type: 'SET_ACTIVE_LEFT_TAB', tab: 'assets' })}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            height: '28px',
-            padding: '0 12px',
-            borderRadius: '6px',
-            fontSize: '12px',
-            fontWeight: activeTab === 'assets' ? 600 : 500,
-            border: activeTab === 'assets' ? '1px solid var(--color-border-default, #CBD5E1)' : '1px solid transparent',
-            backgroundColor: activeTab === 'assets' ? 'var(--color-surface, #FFFFFF)' : 'transparent',
-            color: activeTab === 'assets' ? 'var(--color-brand, #3568E8)' : 'var(--color-text-secondary, #475569)',
-            cursor: 'pointer',
-            transition: 'all 120ms ease',
-          }}
-          aria-selected={activeTab === 'assets'}
-        >
-          <Film size={13} />
-          <span>Assets & Scenes</span>
-        </button>
+        <Tabs
+          tabs={workspaceTabs}
+          activeTab={activeTab}
+          size="sm"
+          onChange={(tab) => dispatch({ type: 'SET_ACTIVE_LEFT_TAB', tab: tab as 'ai' | 'assets' })}
+        />
       </div>
 
       {/* Tab Content Viewport */}

@@ -10,7 +10,7 @@ import {
   VolumeX,
 } from 'lucide-react';
 import { useEditor } from '../../state/editorStore';
-import { IconButton } from '../ui/IconButton';
+import { IconButton, Badge } from '../ui';
 import { formatTimecode } from '../../geometry/timecode';
 
 export interface TransportControlsProps {
@@ -54,11 +54,12 @@ export const TransportControls: React.FC<TransportControlsProps> = ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: 'var(--bg-panel-elevated)',
-        borderTop: '1px solid var(--border-subtle)',
+        backgroundColor: 'var(--color-surface, #FFFFFF)',
+        borderTop: '1px solid var(--color-border-subtle, #E2E8F0)',
         boxSizing: 'border-box',
         flexShrink: 0,
       }}
+      data-testid="transport-controls"
     >
       {/* Left: Timecode Readout */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -68,85 +69,79 @@ export const TransportControls: React.FC<TransportControlsProps> = ({
             alignItems: 'baseline',
             gap: '6px',
             fontVariantNumeric: 'tabular-nums',
+            fontFamily: '"JetBrains Mono", monospace',
           }}
         >
           <span
             style={{
               fontSize: '13px',
               fontWeight: 600,
-              color: 'var(--text-primary)',
+              color: 'var(--color-text-primary, #17233B)',
               letterSpacing: '0.02em',
             }}
           >
             {currentTimecode}
           </span>
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>/</span>
-          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{totalTimecode}</span>
+          <span style={{ fontSize: '11px', color: 'var(--color-text-muted, #64748B)' }}>/</span>
+          <span style={{ fontSize: '12px', color: 'var(--color-text-secondary, #52627A)' }}>{totalTimecode}</span>
         </div>
 
-        <span
-          style={{
-            fontSize: '10px',
-            padding: '1px 5px',
-            borderRadius: '3px',
-            backgroundColor: 'var(--bg-surface)',
-            color: 'var(--text-secondary)',
-            fontVariantNumeric: 'tabular-nums',
-          }}
-        >
-          Frame {state.currentFrame} / {state.timeline.totalDurationInFrames}
-        </span>
+        <Badge variant="default">
+          F {state.currentFrame} / {state.timeline.totalDurationInFrames}
+        </Badge>
       </div>
 
       {/* Center: Playback Buttons */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
         <IconButton
           icon={<ChevronsLeft size={14} />}
-          label="Step -10 frames (Shift+Left)"
+          label="Lùi 10 frames (Shift+Left)"
           size="sm"
           onClick={() => stepFrame(-10)}
         />
         <IconButton
           icon={<ChevronLeft size={15} />}
-          label="Step -1 frame (Left)"
+          label="Lùi 1 frame (Left)"
           size="sm"
           onClick={() => stepFrame(-1)}
         />
 
+        {/* Primary Play/Pause CTA */}
         <button
           onClick={() => dispatch({ type: 'TOGGLE_PLAYING' })}
-          title={state.isPlaying ? 'Pause (Space)' : 'Play (Space)'}
-          aria-label={state.isPlaying ? 'Pause' : 'Play'}
+          title={state.isPlaying ? 'Tạm dừng (Phím Space)' : 'Phát (Phím Space)'}
+          aria-label={state.isPlaying ? 'Tạm dừng' : 'Phát'}
           style={{
-            width: '32px',
-            height: '32px',
+            width: '34px',
+            height: '34px',
             borderRadius: '50%',
-            backgroundColor: 'var(--accent)',
+            backgroundColor: 'var(--color-primary, #3568E8)',
             color: '#FFFFFF',
             border: 'none',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            margin: '0 4px',
-            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.4)',
+            margin: '0 6px',
+            boxShadow: '0 2px 6px rgba(53, 104, 232, 0.3)',
             transition: 'transform 80ms ease, background-color 80ms ease',
+            outline: 'none',
           }}
           onMouseDown={(e) => ((e.currentTarget as HTMLElement).style.transform = 'scale(0.95)')}
           onMouseUp={(e) => ((e.currentTarget as HTMLElement).style.transform = 'scale(1)')}
         >
-          {state.isPlaying ? <Pause size={14} fill="#FFFFFF" /> : <Play size={14} fill="#FFFFFF" style={{ marginLeft: '2px' }} />}
+          {state.isPlaying ? <Pause size={15} fill="#FFFFFF" /> : <Play size={15} fill="#FFFFFF" style={{ marginLeft: '2px' }} />}
         </button>
 
         <IconButton
           icon={<ChevronRight size={15} />}
-          label="Step +1 frame (Right)"
+          label="Tiến 1 frame (Right)"
           size="sm"
           onClick={() => stepFrame(1)}
         />
         <IconButton
           icon={<ChevronsRight size={14} />}
-          label="Step +10 frames (Shift+Right)"
+          label="Tiến 10 frames (Shift+Right)"
           size="sm"
           onClick={() => stepFrame(10)}
         />
@@ -157,17 +152,18 @@ export const TransportControls: React.FC<TransportControlsProps> = ({
         {/* Speed Toggle */}
         <button
           onClick={nextSpeed}
-          title="Playback Speed"
+          title="Tốc độ phát lại"
           style={{
-            padding: '2px 6px',
-            borderRadius: '4px',
-            backgroundColor: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            color: 'var(--text-secondary)',
+            padding: '2px 8px',
+            borderRadius: 'var(--radius-control, 8px)',
+            backgroundColor: 'var(--color-surface-muted, #F2F5FA)',
+            border: '1px solid var(--color-border-subtle, #E2E8F0)',
+            color: 'var(--color-text-secondary, #52627A)',
             fontSize: '11px',
             fontWeight: 600,
             cursor: 'pointer',
             fontVariantNumeric: 'tabular-nums',
+            transition: 'all 120ms ease',
           }}
         >
           {playbackRate}x
@@ -177,7 +173,7 @@ export const TransportControls: React.FC<TransportControlsProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <IconButton
             icon={volume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
-            label={volume === 0 ? 'Unmute' : 'Mute'}
+            label={volume === 0 ? 'Bật âm thanh' : 'Tắt tiếng'}
             size="sm"
             onClick={toggleMute}
           />
@@ -188,13 +184,14 @@ export const TransportControls: React.FC<TransportControlsProps> = ({
             step={0.05}
             value={volume}
             onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-            title={`Volume: ${Math.round(volume * 100)}%`}
+            title={`Âm lượng: ${Math.round(volume * 100)}%`}
             style={{
               width: '56px',
               height: '4px',
-              accentColor: 'var(--accent)',
+              accentColor: 'var(--color-primary, #3568E8)',
               cursor: 'pointer',
             }}
+            aria-label="Thanh điều chỉnh âm lượng"
           />
         </div>
       </div>

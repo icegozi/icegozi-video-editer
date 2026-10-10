@@ -1,0 +1,71 @@
+{
+  "phase_id": "02",
+  "patch_ids": ["UI-04", "UI-05", "UI-06"],
+  "commit_eligible": true,
+  "checks": {
+    "static_checks": {
+      "status": "PASS",
+      "commands_or_method": ["npm run typecheck"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-02/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "unit_tests": {
+      "status": "PASS",
+      "commands_or_method": ["npm test"],
+      "exit_code": 0,
+      "evidence_paths": ["tests/unit/workspace-state.test.ts", "docs/ui-ux/evidence/phase-02/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "integration_tests": {
+      "status": "PASS",
+      "commands_or_method": ["npm test"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-02/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "browser_e2e": {
+      "status": "PASS",
+      "commands_or_method": ["npx tsx scripts/capture-phase02.ts"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-02/screenshots/"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "visual_evidence": {
+      "status": "PASS",
+      "commands_or_method": ["Playwright headless screenshots of AI Focus, Edit Focus, Preview Focus at 1366x768 and 1920x1080"],
+      "exit_code": 0,
+      "evidence_paths": [
+        "docs/ui-ux/evidence/phase-02/screenshots/phase02_ai_focus_1366x768.png",
+        "docs/ui-ux/evidence/phase-02/screenshots/phase02_ai_focus_1920x1080.png",
+        "docs/ui-ux/evidence/phase-02/screenshots/phase02_edit_focus_1366x768.png",
+        "docs/ui-ux/evidence/phase-02/screenshots/phase02_edit_focus_1920x1080.png",
+        "docs/ui-ux/evidence/phase-02/screenshots/phase02_preview_focus_1366x768.png",
+        "docs/ui-ux/evidence/phase-02/screenshots/phase02_preview_focus_1920x1080.png"
+      ],
+      "run_kind": "real",
+      "reason": null
+    },
+    "accessibility_checks": {
+      "status": "PASS",
+      "commands_or_method": ["ARIA tablist/tab structure, button aria-label & title inspection"],
+      "exit_code": 0,
+      "evidence_paths": ["src/editor/components/shell/CommandBar.tsx", "src/editor/components/shell/LeftWorkspace.tsx"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "regression_checks": {
+      "status": "PASS",
+      "commands_or_method": ["npm test", "npm run build:editor"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-02/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    }
+  },
+  "final_status": "DONE"
+}

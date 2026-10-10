@@ -144,7 +144,7 @@ export const PreviewWorkspace: React.FC = () => {
           padding: '16px',
           boxSizing: 'border-box',
           overflow: 'auto',
-          backgroundColor: '#07090C',
+          backgroundColor: 'var(--color-stage, #0F172A)',
           position: 'relative',
         }}
       >

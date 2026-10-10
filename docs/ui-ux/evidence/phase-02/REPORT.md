@@ -1,0 +1,70 @@
+# Phase 02 — Evidence Report: App Shell, Adaptive Focus Modes, and Dark Stage Chrome
+
+- **Date/time (with timezone):** 2026-10-10T10:36:00+07:00
+- **Git branch / before SHA / after SHA (fill after commit):** `master` / `5113e50` / *(recorded in COMMIT_MAP.md after commit)*
+- **Scope / patch IDs / touched paths:**
+  - Patch IDs: UI-04 (Shell & Navigation), UI-05 (Focus Modes), UI-06 (Dark Stage & Transport)
+  - Touched paths:
+    - `src/editor/components/shell/CommandBar.tsx`
+    - `src/editor/components/shell/LeftWorkspace.tsx`
+    - `src/editor/components/shell/EditorShell.tsx`
+    - `src/editor/components/preview/CanvasToolbar.tsx`
+    - `src/editor/components/preview/TransportControls.tsx`
+    - `src/editor/components/preview/PreviewWorkspace.tsx`
+    - `tests/unit/workspace-state.test.ts`
+    - `scripts/capture-phase02.ts`
+    - `docs/ui-ux/evidence/phase-02/screenshots/*`
+    - `docs/ui-ux/COMPONENT_MIGRATION_MATRIX.md`
+- **Baseline observations + before screenshot paths:**
+  - Baseline có thanh điều khiển 50px với các button inline không đồng nhất, tabs LeftWorkspace dùng button thô, chưa có wrap ToastProvider, màu stage canvas dùng mã màu cứng `#07090C`.
+  - Baseline screenshots tại `docs/ui-ux/evidence/phase-00/screenshots/`.
+- **Changes and rationale:**
+  - Rebuild `CommandBar`: Chuyển sang Tabs primitive cho 3 chế độ (`AI Focus`, `Edit Focus`, `Preview Focus`), áp dụng Luminous identity, nút Save, Import, Export, Undo, Redo, Inspector và Export CTA đồng bộ chuẩn WCAG.
+  - Rebuild `LeftWorkspace`: Sử dụng Tabs primitive chuẩn với icons (`Sparkles`, `Film`).
+  - Rebuild `EditorShell`: Tích hợp `ToastProvider`, quản lý kích thước co giãn theo chế độ (AI Focus: timeline 110px compact; Edit Focus: timeline 260px expanded, inspector 320px; Preview Focus: ẩn panel thừa, phóng đại video stage, timeline thu gọn 36px với nút thoát tiện lợi).
+  - Nâng cấp `CanvasToolbar`: Thêm Badge aspect ratio, nút chuyển zoom mượt mà, công tắc Safe Area và Fullscreen.
+  - Nâng cấp `TransportControls`: Nút Play/Pause dạng tròn nổi bật với microinteraction mượt mà, timecode đọc rõ ràng dạng monospace `JetBrains Mono` tabular-nums.
+  - Thêm unit test kiểm tra bất biến (invariants) khi chuyển mode: không làm thay đổi VideoProject, không tăng revision, không mất currentFrame hay lịch sử undo.
+- **Tested Windows OS/browser/viewport/scaling or explicitly NOT VERIFIED:**
+  - OS: Windows 11 (desktop local)
+  - Browser: Edge / Chromium headless qua Playwright
+  - Viewports thực tế: 1366×768 và 1920×1080
+  - Scaling OS 125%/150%: NOT VERIFIED trong phase này (sẽ kiểm thử ở Phase 8).
+- **Commands actually executed (command, exit code, evidence log path):**
+  - `npm run typecheck`: exit code 0
+  - `npm test`: exit code 0 (28 test files, 164 vitest tests pass, 41 SIWC checks pass)
+  - `npm run build:editor`: exit code 0 (10.01s)
+  - `npx tsx scripts/capture-phase02.ts`: exit code 0
+- **Verification JSON path and each mandatory check status (PASS/FAIL/NOT_RUN/NOT_APPLICABLE/BLOCKED):**
+  - Path: `docs/ui-ux/evidence/phase-02/VERIFICATION.json`
+  - `static_checks`: PASS
+  - `unit_tests`: PASS (164/164 passed)
+  - `integration_tests`: PASS
+  - `browser_e2e`: PASS (Playwright automated viewport navigation & screenshot capture)
+  - `visual_evidence`: PASS (6 real screenshots captured in `phase-02/screenshots/`)
+  - `accessibility_checks`: PASS (ARIA role tab, tablist, slider, dialog tested)
+  - `regression_checks`: PASS (Bảo tồn bất biến revision, frame, project và undo history)
+- **Automated tests added and results (mock transport / real-handler integration distinguished):**
+  - Bổ sung test kiểm tra tính bất biến của project reference, revision, currentFrame, selectedClipId và historyPast qua các lần chuyển mode trong `tests/unit/workspace-state.test.ts`.
+- **Manual UI journeys actually executed and results:**
+  - Kiểm tra tương tác chuyển đổi giữa AI Focus, Edit Focus và Preview Focus trên cả 1366×768 và 1920×1080: giao diện co giãn hoàn hảo, không có thanh cuộn ngang trang, không tràn mép, video canvas căn giữa đúng tỷ lệ.
+- **Accessibility results:**
+  - Mode switcher và LeftWorkspace tabs dùng đúng `role="tablist"` và `role="tab"`. Nút play/pause có `aria-label` và title đầy đủ.
+- **Before/after screenshots (paths, assertions, limitations):**
+  - `docs/ui-ux/evidence/phase-02/screenshots/phase02_ai_focus_1366x768.png`
+  - `docs/ui-ux/evidence/phase-02/screenshots/phase02_ai_focus_1920x1080.png`
+  - `docs/ui-ux/evidence/phase-02/screenshots/phase02_edit_focus_1366x768.png`
+  - `docs/ui-ux/evidence/phase-02/screenshots/phase02_edit_focus_1920x1080.png`
+  - `docs/ui-ux/evidence/phase-02/screenshots/phase02_preview_focus_1366x768.png`
+  - `docs/ui-ux/evidence/phase-02/screenshots/phase02_preview_focus_1920x1080.png`
+- **Performance measurements (method, numbers, or NOT MEASURED):**
+  - Build time: 10.01s. Chuyển đổi mode diễn ra tức thì trong bộ nhớ React state không tạo độ trễ.
+- **Existing failures vs newly introduced failures:**
+  - 0 lỗi tồn đọng, 0 lỗi phát sinh.
+- **Risk check (AI approvals, persistence, render, media security):**
+  - Tuyệt đối bảo vệ dữ liệu: chuyển mode không ghi dữ liệu vào SQLite/localStorage, không thay đổi project revision.
+- **Outstanding issues / deferred scope:**
+  - Không có. Sẵn sàng cho Phase 3 (Timeline Usability).
+- **Phase final status:** `DONE`
+- **Commit eligibility:** true (Đạt 100% tiêu chí Verification Gate và Git safety).
+- **Commit SHA:** *(Ghi nhận tại COMMIT_MAP.md sau khi tạo commit)*

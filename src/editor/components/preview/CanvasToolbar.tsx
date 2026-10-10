@@ -1,7 +1,7 @@
 import React from 'react';
-import { Maximize2, Shield, Eye } from 'lucide-react';
+import { Maximize2, Shield } from 'lucide-react';
 import { useEditor } from '../../state/editorStore';
-import { IconButton } from '../ui/IconButton';
+import { IconButton, Badge } from '../ui';
 
 export interface CanvasToolbarProps {
   zoomMode: 'fit' | '50' | '100';
@@ -26,36 +26,34 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: 'var(--bg-panel)',
-        borderBottom: '1px solid var(--border-subtle)',
+        backgroundColor: 'var(--color-surface, #FFFFFF)',
+        borderBottom: '1px solid var(--color-border-subtle, #E2E8F0)',
         boxSizing: 'border-box',
         flexShrink: 0,
       }}
+      data-testid="canvas-toolbar"
     >
       {/* Left: Resolution & Aspect Ratio Badge */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <span
+          className="tabular-nums"
           style={{
-            fontSize: '11px',
+            fontSize: '12px',
             fontWeight: 500,
-            color: 'var(--text-secondary)',
-            fontVariantNumeric: 'tabular-nums',
+            color: 'var(--color-text-secondary, #52627A)',
           }}
         >
           {state.project.width} × {state.project.height}
         </span>
+        <Badge variant="default">{aspectRatio}</Badge>
         <span
+          className="tabular-nums"
           style={{
-            fontSize: '10px',
-            padding: '1px 6px',
-            borderRadius: '4px',
-            backgroundColor: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            color: 'var(--text-muted)',
-            fontWeight: 600,
+            fontSize: '11px',
+            color: 'var(--color-text-muted, #64748B)',
           }}
         >
-          {aspectRatio}
+          {state.project.fps} FPS
         </span>
       </div>
 
@@ -65,10 +63,11 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         <div
           style={{
             display: 'flex',
-            backgroundColor: 'var(--bg-surface)',
-            borderRadius: '4px',
+            backgroundColor: 'var(--color-surface-muted, #F2F5FA)',
+            borderRadius: 'var(--radius-control, 8px)',
             padding: '2px',
-            border: '1px solid var(--border-subtle)',
+            border: '1px solid var(--color-border-subtle, #E2E8F0)',
+            gap: '2px',
           }}
         >
           {(['fit', '50', '100'] as const).map((mode) => (
@@ -77,14 +76,16 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
               onClick={() => onZoomChange(mode)}
               style={{
                 border: 'none',
-                background: zoomMode === mode ? 'var(--bg-active)' : 'transparent',
-                color: zoomMode === mode ? 'var(--accent)' : 'var(--text-muted)',
-                fontSize: '10px',
-                fontWeight: 600,
-                padding: '2px 6px',
-                borderRadius: '3px',
+                background: zoomMode === mode ? 'var(--color-surface, #FFFFFF)' : 'transparent',
+                color: zoomMode === mode ? 'var(--color-primary, #3568E8)' : 'var(--color-text-secondary, #52627A)',
+                fontSize: '11px',
+                fontWeight: zoomMode === mode ? 600 : 500,
+                padding: '2px 8px',
+                borderRadius: '6px',
                 cursor: 'pointer',
                 textTransform: 'uppercase',
+                boxShadow: zoomMode === mode ? '0 1px 2px rgba(0, 0, 0, 0.05)' : 'none',
+                transition: 'all 120ms ease',
               }}
             >
               {mode === 'fit' ? 'Fit' : `${mode}%`}
@@ -93,16 +94,16 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         </div>
 
         <IconButton
-          icon={<Shield size={13} />}
-          label={state.isSafeAreasVisible ? 'Hide Safe Areas' : 'Show Safe Areas'}
+          icon={<Shield size={14} />}
+          label={state.isSafeAreasVisible ? 'Ẩn vùng an toàn (Safe Area)' : 'Hiện vùng an toàn (Safe Area)'}
           active={state.isSafeAreasVisible}
           size="sm"
           onClick={() => dispatch({ type: 'TOGGLE_SAFE_AREAS' })}
         />
 
         <IconButton
-          icon={<Maximize2 size={13} />}
-          label="Toggle Fullscreen Canvas"
+          icon={<Maximize2 size={14} />}
+          label="Toàn màn hình Preview"
           size="sm"
           onClick={onFullscreenToggle}
         />

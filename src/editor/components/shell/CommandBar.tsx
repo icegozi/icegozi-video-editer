@@ -1,25 +1,23 @@
 import React, { useRef } from 'react';
 import {
-  Film,
+  Sparkles,
+  Edit3,
+  Eye,
   Undo2,
   Redo2,
   Download,
   Save,
   FolderOpen,
-  RotateCcw,
   Sliders,
-  Sparkles,
-  Edit3,
-  Eye,
+  Film,
 } from 'lucide-react';
 import { useEditor } from '../../state/editorStore';
 import { useProjectPersistence } from '../../hooks/useProjectPersistence';
-import { Button } from '../ui/Button';
-import { IconButton } from '../ui/IconButton';
+import { Button, IconButton, Tabs, Badge } from '../ui';
 
 export const CommandBar: React.FC = () => {
   const { state, dispatch } = useEditor();
-  const { saveNow, exportJson, importJson, resetToDemo } = useProjectPersistence();
+  const { saveNow, exportJson, importJson } = useProjectPersistence();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const canUndo = state.historyPast.length > 0;
@@ -38,55 +36,53 @@ export const CommandBar: React.FC = () => {
       }
     };
     reader.readAsText(file);
-    e.target.value = ''; // Reset input
+    e.target.value = '';
   };
 
   const renderStatusBadge = () => {
     switch (state.saveStatus) {
       case 'saving':
         return (
-          <span style={{ fontSize: '11px', color: 'var(--color-brand, #3568E8)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-brand, #3568E8)' }} />
+          <Badge variant="brand">
+            <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-primary, #3568E8)' }} />
             Đang lưu…
-          </span>
+          </Badge>
         );
       case 'dirty':
         return (
-          <span
-            onClick={saveNow}
-            title="Nhấn để lưu ngay (Ctrl+S)"
-            style={{ fontSize: '11px', color: 'var(--color-warning, #B45309)', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
-          >
+          <Badge variant="warning" onClick={saveNow}>
             <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-warning, #B45309)' }} />
-            Chưa lưu
-          </span>
+            Chưa lưu (Ctrl+S)
+          </Badge>
         );
       case 'error':
         return (
-          <span
-            onClick={saveNow}
-            title={state.saveError || 'Lưu thất bại. Bấm để thử lại.'}
-            style={{ fontSize: '11px', color: 'var(--color-danger, #DC2626)', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
-          >
+          <Badge variant="danger" onClick={saveNow}>
             <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-danger, #DC2626)' }} />
             Lỗi lưu
-          </span>
+          </Badge>
         );
       case 'saved':
       default:
         return (
-          <span style={{ fontSize: '11px', color: 'var(--color-success, #167A4A)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <Badge variant="success">
             <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-success, #167A4A)' }} />
             Đã lưu
-          </span>
+          </Badge>
         );
     }
   };
 
+  const modeTabs = [
+    { id: 'ai', label: 'AI Focus', icon: <Sparkles size={13} /> },
+    { id: 'edit', label: 'Edit Focus', icon: <Edit3 size={13} /> },
+    { id: 'preview', label: 'Preview Focus', icon: <Eye size={13} /> },
+  ];
+
   return (
     <header
       style={{
-        height: '50px',
+        height: '48px',
         padding: '0 16px',
         display: 'flex',
         alignItems: 'center',
@@ -97,6 +93,7 @@ export const CommandBar: React.FC = () => {
         flexShrink: 0,
         zIndex: 50,
       }}
+      data-testid="command-bar"
     >
       {/* Hidden file input for project JSON import */}
       <input
@@ -107,194 +104,115 @@ export const CommandBar: React.FC = () => {
         onChange={handleFileChange}
       />
 
-      {/* Left: Identity & Project Title */}
+      {/* Left: Studio Identity & Project Title */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div
             style={{
-              width: '26px',
-              height: '26px',
-              borderRadius: '6px',
-              backgroundColor: 'var(--color-brand, #3568E8)',
+              width: '28px',
+              height: '28px',
+              borderRadius: 'var(--radius-control, 8px)',
+              backgroundColor: 'var(--color-primary, #3568E8)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: '#FFFFFF',
+              boxShadow: '0 1px 3px rgba(53, 104, 232, 0.3)',
             }}
           >
             <Film size={15} />
           </div>
-          <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-text-primary, #0F172A)', letterSpacing: '-0.02em' }}>
-            ICEGOZI
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-primary, #17233B)', letterSpacing: '-0.02em', lineHeight: '16px' }}>
+              ICEGOZI
+            </span>
+            <span style={{ fontSize: '10px', color: 'var(--color-text-muted, #64748B)', lineHeight: '12px' }}>
+              Studio
+            </span>
+          </div>
         </div>
 
-        <div style={{ width: '1px', height: '16px', backgroundColor: 'var(--color-border-subtle, #E2E8F0)' }} />
+        <div style={{ width: '1px', height: '18px', backgroundColor: 'var(--color-border-subtle, #E2E8F0)' }} />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-secondary, #475569)' }}>
+          <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-primary, #17233B)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {state.project.title}
           </span>
           {renderStatusBadge()}
         </div>
       </div>
 
-      {/* Center: Workspace Mode Switcher (AI Focus | Edit Focus | Preview Focus) */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          backgroundColor: 'var(--color-surface-muted, #F8FAFC)',
-          border: '1px solid var(--color-border-default, #CBD5E1)',
-          borderRadius: '6px',
-          padding: '2px',
-          gap: '2px',
-        }}
-        role="group"
-        aria-label="Chế độ làm việc"
-      >
-        <button
-          type="button"
-          onClick={() => dispatch({ type: 'SET_WORKSPACE_MODE', mode: 'ai' })}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '5px',
-            height: '26px',
-            padding: '0 10px',
-            borderRadius: '4px',
-            fontSize: '11px',
-            fontWeight: currentMode === 'ai' ? 600 : 500,
-            border: 'none',
-            backgroundColor: currentMode === 'ai' ? 'var(--color-surface, #FFFFFF)' : 'transparent',
-            color: currentMode === 'ai' ? 'var(--color-brand, #3568E8)' : 'var(--color-text-secondary, #475569)',
-            boxShadow: currentMode === 'ai' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-            cursor: 'pointer',
-            transition: 'all 120ms ease',
-          }}
-        >
-          <Sparkles size={12} />
-          <span>AI Focus</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => dispatch({ type: 'SET_WORKSPACE_MODE', mode: 'edit' })}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '5px',
-            height: '26px',
-            padding: '0 10px',
-            borderRadius: '4px',
-            fontSize: '11px',
-            fontWeight: currentMode === 'edit' ? 600 : 500,
-            border: 'none',
-            backgroundColor: currentMode === 'edit' ? 'var(--color-surface, #FFFFFF)' : 'transparent',
-            color: currentMode === 'edit' ? 'var(--color-brand, #3568E8)' : 'var(--color-text-secondary, #475569)',
-            boxShadow: currentMode === 'edit' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-            cursor: 'pointer',
-            transition: 'all 120ms ease',
-          }}
-        >
-          <Edit3 size={12} />
-          <span>Edit Focus</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => dispatch({ type: 'SET_WORKSPACE_MODE', mode: 'preview' })}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '5px',
-            height: '26px',
-            padding: '0 10px',
-            borderRadius: '4px',
-            fontSize: '11px',
-            fontWeight: currentMode === 'preview' ? 600 : 500,
-            border: 'none',
-            backgroundColor: currentMode === 'preview' ? 'var(--color-surface, #FFFFFF)' : 'transparent',
-            color: currentMode === 'preview' ? 'var(--color-brand, #3568E8)' : 'var(--color-text-secondary, #475569)',
-            boxShadow: currentMode === 'preview' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-            cursor: 'pointer',
-            transition: 'all 120ms ease',
-          }}
-        >
-          <Eye size={12} />
-          <span>Preview Focus</span>
-        </button>
-      </div>
+      {/* Center: Workspace Mode Switcher via unified Tabs primitive */}
+      <Tabs
+        tabs={modeTabs}
+        activeTab={currentMode}
+        size="sm"
+        onChange={(mode) => dispatch({ type: 'SET_WORKSPACE_MODE', mode: mode as 'ai' | 'edit' | 'preview' })}
+      />
 
       {/* Right: Actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         {/* Project Quick Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
           <IconButton
-            icon={<Save size={13} />}
+            icon={<Save size={14} />}
             label="Lưu dự án (Ctrl+S)"
             size="sm"
             onClick={saveNow}
           />
           <IconButton
-            icon={<FolderOpen size={13} />}
-            label="Nhập dự án từ file JSON"
+            icon={<FolderOpen size={14} />}
+            label="Mở tệp JSON dự án"
             size="sm"
             onClick={() => fileInputRef.current?.click()}
           />
           <IconButton
-            icon={<Download size={13} />}
-            label="Xuất dự án ra file JSON"
+            icon={<Download size={14} />}
+            label="Tải xuống tệp JSON dự án"
             size="sm"
             onClick={exportJson}
           />
-          <IconButton
-            icon={<RotateCcw size={13} />}
-            label="Đặt lại về dự án mẫu"
-            size="sm"
-            onClick={resetToDemo}
-          />
         </div>
 
         <div style={{ width: '1px', height: '16px', backgroundColor: 'var(--color-border-subtle, #E2E8F0)' }} />
 
-        {/* Undo / Redo */}
+        {/* History Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
           <IconButton
-            icon={<Undo2 size={13} />}
+            icon={<Undo2 size={14} />}
             label="Hoàn tác (Ctrl+Z)"
+            size="sm"
             disabled={!canUndo}
             onClick={() => dispatch({ type: 'UNDO' })}
-            size="sm"
           />
           <IconButton
-            icon={<Redo2 size={13} />}
-            label="Làm lại (Ctrl+Shift+Z)"
+            icon={<Redo2 size={14} />}
+            label="Làm lại (Ctrl+Y)"
+            size="sm"
             disabled={!canRedo}
             onClick={() => dispatch({ type: 'REDO' })}
-            size="sm"
           />
         </div>
 
         <div style={{ width: '1px', height: '16px', backgroundColor: 'var(--color-border-subtle, #E2E8F0)' }} />
 
-        {/* Toggle Inspector */}
+        {/* Inspector Toggle */}
         <IconButton
-          icon={<Sliders size={13} />}
-          label={state.isInspectorOpen ? 'Ẩn thanh thuộc tính' : 'Hiện thanh thuộc tính'}
+          icon={<Sliders size={14} />}
+          label="Thuộc tính Inspector"
+          size="sm"
           active={state.isInspectorOpen}
           onClick={() => dispatch({ type: 'TOGGLE_INSPECTOR' })}
-          size="sm"
         />
 
-        {/* Primary CTA: Export Video */}
+        {/* Major Action: Export Modal */}
         <Button
           variant="primary"
           size="sm"
           icon={<Download size={13} />}
           onClick={() => dispatch({ type: 'SET_EXPORT_MODAL', open: true })}
         >
-          Xuất Video
+          Xuất video
         </Button>
       </div>
     </header>
