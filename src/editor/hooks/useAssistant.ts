@@ -26,7 +26,6 @@ export function useAssistant() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
-  const identity = useRef('');
   const snapshot = useCallback(() => ({ project: stateRef.current.project, revision: stateRef.current.revision,
     selectedClipId: stateRef.current.selectedClipId, playhead: stateRef.current.currentFrame }), []);
 
@@ -45,13 +44,11 @@ export function useAssistant() {
     return () => { stopped = true; clearInterval(timer); };
   }, []);
   const profileId = status?.auth.profileId ?? 'disconnected';
-  const sharing = status?.auth.sharing ?? false;
+  const sharing = status?.auth.status === 'connected' && status.auth.sharing;
   const projectId = state.project.id;
   useEffect(() => {
     if (!status) return;
     const controller = new AbortController();
-    const key = `${profileId}:${projectId}`;
-    identity.current = key;
     setConversation(null);
     dispatch({ type: 'SET_ASSISTANT_SESSION', epoch: null });
     void assistantRequest<AssistantConversation>('conversation', snapshot(), controller.signal).then((view) => {
@@ -59,7 +56,7 @@ export function useAssistant() {
     }).catch((err: unknown) => { if (!controller.signal.aborted) setError(err instanceof Error ? err.message : 'Không mở được hội thoại.'); });
     return () => controller.abort();
     // Status polling must not reopen the conversation on every tick.
-  }, [profileId, projectId, !!status, dispatch, snapshot]);
+  }, [profileId, projectId, status?.bridgeEpoch, dispatch, snapshot]);
   const refreshModels = useCallback(async () => {
     const result = await assistantRequest<{ models: AssistantStatus['models'] }>('models');
     setModels(result.models);
@@ -77,6 +74,9 @@ export function useAssistant() {
 
   const conversationId = conversation?.id;
   const epoch = conversation?.epoch;
+  useEffect(() => {
+    if (conversation?.projectId === state.project.id && epoch && state.assistantEpoch !== epoch) dispatch({ type: 'SET_ASSISTANT_SESSION', epoch });
+  }, [epoch, state.assistantEpoch, state.project.id, conversation?.projectId, dispatch]);
   useEffect(() => {
     if (!conversationId || !epoch) return;
     const controller = new AbortController();
@@ -133,9 +133,10 @@ export function useAssistant() {
   const send = (text: string) => run(async () => {
     await assistantRequest('turn', { ...owner(), requestId: crypto.randomUUID(), text, model, snapshot: snapshot() });
   });
-  const apply = (proposal: ProjectProposal) => {
-    dispatch({ type: 'APPLY_AI_PROJECT_CHANGE', proposal });
-  };
+  const apply = (proposal: ProjectProposal) => run(async () => {
+    const validated = await assistantRequest<ProjectProposal>('proposal/apply', { ...owner(), proposalId: proposal.id, snapshot: snapshot() });
+    dispatch({ type: 'APPLY_AI_PROJECT_CHANGE', proposal: validated });
+  });
   const dismiss = (proposal: ProjectProposal) => run(async () => { await assistantRequest('proposal/dismiss', { ...owner(), proposalId: proposal.id }); });
   const render = () => run(async () => {
     const result = await assistantRequest<AssistantRender>('render', { ...owner(), requestId: crypto.randomUUID(), snapshot: snapshot() });
@@ -170,7 +171,7 @@ export function useAssistant() {
     cancelLogin: () => run(async () => { await assistantRequest('login/cancel', {}); await refreshStatus(); }),
     selectProfile: (profileId: string) => run(async () => { setConversation(null); dispatch({ type: 'SET_ASSISTANT_SESSION', epoch: null }); await assistantRequest('profile', { profileId }); await refreshStatus(); }),
     refreshModels: () => run(refreshModels),
-    cancel: () => run(async () => { await assistantRequest('turn/cancel', owner()); }),
+    cancel: async () => { try { await assistantRequest('turn/cancel', owner()); } catch (err) { setError(err instanceof Error ? err.message : 'Không dừng được tác vụ.'); } },
     approval: (approvalId: string, decision: 'accept' | 'decline' | 'cancel') => run(async () => { await assistantRequest('approval', { ...owner(), approvalId, decision }); }),
     cancelRender: (jobId: string) => run(async () => { await assistantRequest('render/cancel', { ...owner(), jobId }); }),
   };

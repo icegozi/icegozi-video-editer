@@ -53,7 +53,7 @@ export const AssistantPanel: React.FC<{ open: boolean; onClose: () => void }> = 
         <p>Scene/track: {proposal.affected.join(', ') || 'Thay đổi project'} · {proposal.candidate.scenes.length} scene</p>
         {proposal.warnings.map((warning) => <p key={warning}>{warning}</p>)}
         <details><summary>Xem project dự kiến</summary><pre>{JSON.stringify(proposal.candidate, null, 2)}</pre></details>
-        <div className="assistant-actions"><Button disabled={assistant.applied.includes(proposal.id)} onClick={() => assistant.apply(proposal)}>{assistant.applied.includes(proposal.id) ? 'Đã áp dụng' : 'Áp dụng'}</Button><Button disabled={assistant.busy} onClick={() => void assistant.dismiss(proposal)}>Bỏ qua</Button></div>
+        <div className="assistant-actions"><Button disabled={assistant.busy || assistant.applied.includes(proposal.id)} onClick={() => void assistant.apply(proposal)}>{assistant.applied.includes(proposal.id) ? 'Đã áp dụng' : 'Áp dụng'}</Button><Button disabled={assistant.busy} onClick={() => void assistant.dismiss(proposal)}>Bỏ qua</Button></div>
       </article>)}
       {assistant.conversation?.renders.map((job) => <article key={job.id}><strong>Preview · {job.projectId}</strong><p>{job.status} · {job.progress}% · snapshot {job.fingerprint.slice(0, 12)}</p>
         {job.downloadUrl && <Button disabled={assistant.busy} onClick={() => void assistant.preview(job)}>Xem MP4</Button>}

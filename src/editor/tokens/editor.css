@@ -1,34 +1,68 @@
-/* Scoped Enterprise Design Tokens & Reset */
+/* Scoped Light Enterprise Design Tokens & Reset */
 :root {
-  --bg-app: #0B0D10;
-  --bg-panel: #111419;
-  --bg-panel-elevated: #161A20;
-  --bg-surface: #1B2027;
-  --bg-hover: #222832;
-  --bg-active: #29313D;
+  /* Surfaces */
+  --color-page: #F7F9FC;
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #F8FAFC;
+  --color-surface-hover: #F1F5F9;
+  --color-surface-active: #E2E8F0;
 
-  --border-subtle: #252B34;
-  --border-default: #303844;
-  --border-strong: #414B59;
+  --bg-app: #F7F9FC;
+  --bg-panel: #FFFFFF;
+  --bg-panel-elevated: #F8FAFC;
+  --bg-surface: #FFFFFF;
+  --bg-hover: #F1F5F9;
+  --bg-active: #E2E8F0;
 
-  --text-primary: #F2F4F7;
-  --text-secondary: #AAB2BF;
-  --text-muted: #737D8C;
-  --text-disabled: #515A66;
+  /* Borders */
+  --color-border-subtle: #E2E8F0;
+  --color-border-default: #CBD5E1;
+  --color-border-strong: #94A3B8;
 
-  --accent: #5B8CFF;
-  --accent-hover: #73A0FF;
-  --accent-active: #4777E6;
-  --accent-soft: rgba(91, 140, 255, 0.14);
+  --border-subtle: #E2E8F0;
+  --border-default: #CBD5E1;
+  --border-strong: #94A3B8;
 
-  --success: #35C78A;
-  --warning: #F2B84B;
-  --danger: #E66363;
-  --info: #5B8CFF;
+  /* Typography */
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748B;
+  --color-text-disabled: #94A3B8;
 
-  --playhead: #FF5D73;
-  --snap-guide: #5B8CFF;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #64748B;
+  --text-disabled: #94A3B8;
+
+  /* Brand / Primary Accent */
+  --color-brand: #3568E8;
+  --color-brand-hover: #2455D4;
+  --color-brand-active: #1D44B8;
+  --color-brand-subtle: #EEF3FF;
+
+  --accent: #3568E8;
+  --accent-hover: #2455D4;
+  --accent-active: #1D44B8;
+  --accent-soft: rgba(53, 104, 232, 0.1);
+
+  /* Semantic Feedback */
+  --color-success: #167A4A;
+  --color-warning: #B45309;
+  --color-danger: #DC2626;
+  --color-info: #3568E8;
+  --color-focus: #2563EB;
+
+  --success: #167A4A;
+  --warning: #B45309;
+  --danger: #DC2626;
+  --info: #3568E8;
+
+  /* Canvas and Video Specific */
+  --color-canvas-bg: #0F172A;
+  --playhead: #E11D48;
+  --snap-guide: #2563EB;
 }
+
 
 body {
   margin: 0;
@@ -69,3 +103,17 @@ body {
   outline: 2px solid var(--accent);
   outline-offset: -1px;
 }
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin-animation {
+  animation: spin 1s linear infinite;
+}
+

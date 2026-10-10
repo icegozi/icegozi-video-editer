@@ -1,81 +1,85 @@
 /**
- * Semantic dark-mode color tokens for the enterprise editor workspace.
+ * Semantic light-mode enterprise color tokens for the editor workspace.
  */
 export const COLOR_TOKENS = {
   // Surface hierarchy
-  bgApp: '#0B0D10',
-  bgPanel: '#111419',
-  bgPanelElevated: '#161A20',
-  bgSurface: '#1B2027',
-  bgHover: '#222832',
-  bgActive: '#29313D',
+  bgApp: '#F7F9FC',
+  bgPanel: '#FFFFFF',
+  bgPanelElevated: '#F8FAFC',
+  bgSurface: '#FFFFFF',
+  bgHover: '#F1F5F9',
+  bgActive: '#E2E8F0',
 
   // Borders
-  borderSubtle: '#252B34',
-  borderDefault: '#303844',
-  borderStrong: '#414B59',
+  borderSubtle: '#E2E8F0',
+  borderDefault: '#CBD5E1',
+  borderStrong: '#94A3B8',
 
   // Typography
-  textPrimary: '#F2F4F7',
-  textSecondary: '#AAB2BF',
-  textMuted: '#737D8C',
-  textDisabled: '#515A66',
+  textPrimary: '#0F172A',
+  textSecondary: '#475569',
+  textMuted: '#64748B',
+  textDisabled: '#94A3B8',
 
   // Primary Accent
-  accent: '#5B8CFF',
-  accentHover: '#73A0FF',
-  accentActive: '#4777E6',
-  accentSoft: 'rgba(91, 140, 255, 0.14)',
+  accent: '#3568E8',
+  accentHover: '#2455D4',
+  accentActive: '#1D44B8',
+  accentSoft: 'rgba(53, 104, 232, 0.1)',
 
   // Semantic Feedback
-  success: '#35C78A',
-  warning: '#F2B84B',
-  danger: '#E66363',
-  info: '#5B8CFF',
+  success: '#167A4A',
+  warning: '#B45309',
+  danger: '#DC2626',
+  info: '#3568E8',
+
+  // Dedicated Video Canvas
+  canvasBg: '#0F172A',
 
   // Timeline Specific
-  playhead: '#FF5D73',
-  snapGuide: '#5B8CFF',
+  playhead: '#E11D48',
+  snapGuide: '#2563EB',
 
   // Track Color Families (Muted enterprise tones)
   tracks: {
     video: {
-      bg: '#1E293B',
-      border: '#334155',
-      selected: 'rgba(91, 140, 255, 0.9)',
-      text: '#93C5FD',
+      bg: '#EEF2FF',
+      border: '#C7D2FE',
+      selected: 'rgba(53, 104, 232, 0.85)',
+      text: '#3730A3',
     },
     audio: {
-      bg: '#14382A',
-      border: '#1F533E',
-      selected: 'rgba(53, 199, 138, 0.9)',
-      text: '#6EE7B7',
+      bg: '#ECFDF5',
+      border: '#A7F3D0',
+      selected: 'rgba(22, 122, 74, 0.85)',
+      text: '#065F46',
     },
     image: {
-      bg: '#2D2244',
-      border: '#433464',
-      selected: 'rgba(167, 139, 250, 0.9)',
-      text: '#C4B5FD',
+      bg: '#F5F3FF',
+      border: '#DDD6FE',
+      selected: 'rgba(124, 58, 237, 0.85)',
+      text: '#5B21B6',
     },
     text: {
-      bg: '#3A2A18',
-      border: '#573E23',
-      selected: 'rgba(242, 184, 75, 0.9)',
-      text: '#FCD34D',
+      bg: '#FFFBEB',
+      border: '#FDE68A',
+      selected: 'rgba(217, 119, 6, 0.85)',
+      text: '#92400E',
     },
     formula: {
-      bg: '#123845',
-      border: '#1C5366',
-      selected: 'rgba(56, 189, 248, 0.9)',
-      text: '#7DD3FC',
+      bg: '#F0F9FF',
+      border: '#BAE6FD',
+      selected: 'rgba(2, 132, 199, 0.85)',
+      text: '#075985',
     },
     composition: {
-      bg: '#22244C',
-      border: '#343872',
-      selected: 'rgba(129, 140, 248, 0.9)',
-      text: '#A5B4FC',
+      bg: '#EEF2FF',
+      border: '#C7D2FE',
+      selected: 'rgba(79, 70, 229, 0.85)',
+      text: '#3730A3',
     },
   },
 } as const;
 
 export type ColorTokens = typeof COLOR_TOKENS;
+

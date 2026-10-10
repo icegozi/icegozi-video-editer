@@ -31,11 +31,21 @@ export interface EditorState {
   assistantEpoch: string | null;
   appliedAiProposalIds: string[];
   assistantApplyError: string | null;
+  workspaceMode: 'ai' | 'edit' | 'preview';
+  isInspectorOpen: boolean;
+  isTimelineCollapsed: boolean;
+  activeLeftTab: 'ai' | 'assets' | 'scenes';
 }
 
 export type EditorAction =
   | { type: 'SET_ASSISTANT_SESSION'; epoch: string | null }
   | { type: 'APPLY_AI_PROJECT_CHANGE'; proposal: ProjectProposal }
+  | { type: 'SET_WORKSPACE_MODE'; mode: 'ai' | 'edit' | 'preview' }
+  | { type: 'SET_INSPECTOR_OPEN'; open: boolean }
+  | { type: 'TOGGLE_INSPECTOR' }
+  | { type: 'SET_TIMELINE_COLLAPSED'; collapsed: boolean }
+  | { type: 'TOGGLE_TIMELINE_COLLAPSE' }
+  | { type: 'SET_ACTIVE_LEFT_TAB'; tab: 'ai' | 'assets' | 'scenes' }
   | { type: 'SET_CURRENT_FRAME'; frame: number }
   | { type: 'SET_IS_PLAYING'; isPlaying: boolean }
   | { type: 'TOGGLE_PLAYING' }
@@ -61,6 +71,7 @@ export type EditorAction =
   | { type: 'SET_SAVE_STATUS'; status: PersistenceStatus; error?: string; savedAt?: number }
   | { type: 'UNDO' }
   | { type: 'REDO' };
+
 
 export function reconcileTimelineState(
   currentFrame: number,
@@ -109,6 +120,10 @@ export function createInitialState(initialProject: VideoProject = demoProject): 
     assistantEpoch: null,
     appliedAiProposalIds: [],
     assistantApplyError: null,
+    workspaceMode: 'ai',
+    isInspectorOpen: false,
+    isTimelineCollapsed: false,
+    activeLeftTab: 'ai',
   };
 }
 
@@ -137,8 +152,50 @@ export function pushHistory(state: EditorState, newProject: VideoProject): Edito
 
 export function editorReducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
+    case 'SET_WORKSPACE_MODE': {
+      if (action.mode === 'ai') {
+        return {
+          ...state,
+          workspaceMode: 'ai',
+          activeLeftTab: 'ai',
+          isInspectorOpen: false,
+          isTimelineCollapsed: false,
+        };
+      }
+      if (action.mode === 'edit') {
+        return {
+          ...state,
+          workspaceMode: 'edit',
+          isInspectorOpen: true,
+          isTimelineCollapsed: false,
+        };
+      }
+      return {
+        ...state,
+        workspaceMode: 'preview',
+        isInspectorOpen: false,
+        isTimelineCollapsed: true,
+      };
+    }
+
+    case 'SET_INSPECTOR_OPEN':
+      return { ...state, isInspectorOpen: action.open };
+
+    case 'TOGGLE_INSPECTOR':
+      return { ...state, isInspectorOpen: !state.isInspectorOpen };
+
+    case 'SET_TIMELINE_COLLAPSED':
+      return { ...state, isTimelineCollapsed: action.collapsed };
+
+    case 'TOGGLE_TIMELINE_COLLAPSE':
+      return { ...state, isTimelineCollapsed: !state.isTimelineCollapsed };
+
+    case 'SET_ACTIVE_LEFT_TAB':
+      return { ...state, activeLeftTab: action.tab };
+
     case 'SET_ASSISTANT_SESSION':
       return { ...state, assistantEpoch: action.epoch, assistantApplyError: null };
+
     case 'APPLY_AI_PROJECT_CHANGE': {
       try {
         if (state.appliedAiProposalIds.includes(action.proposal.id)) throw new Error('Proposal đã được áp dụng.');
@@ -164,7 +221,12 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return { ...state, isPlaying: !state.isPlaying };
 
     case 'SET_SELECTED_CLIP':
-      return { ...state, selectedClipId: action.clipId };
+      return {
+        ...state,
+        selectedClipId: action.clipId,
+        isInspectorOpen: action.clipId ? true : state.isInspectorOpen,
+      };
+
 
     case 'SET_ZOOM':
       return { ...state, zoomPixelsPerSecond: Math.max(30, Math.min(400, action.pixelsPerSecond)) };

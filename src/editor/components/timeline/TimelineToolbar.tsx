@@ -7,7 +7,9 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
+  ChevronDown,
 } from 'lucide-react';
+
 import { useEditor } from '../../state/editorStore';
 import { IconButton } from '../ui/IconButton';
 
@@ -39,13 +41,19 @@ export const TimelineToolbar: React.FC = () => {
   };
 
   const handleFitTimeline = () => {
-    // Fits entire project duration within typical viewport (e.g., 900px)
+    // Dynamically calculate visible timeline width based on active panel widths
+    const panelWidths = (state.isInspectorOpen ? 320 : 0) + 360 + 180; // Left panel (360) + track header (180) + inspector (320)
+    const availableWidth = typeof window !== 'undefined'
+      ? Math.max(400, window.innerWidth - panelWidths - 60)
+      : 800;
+
     const totalSeconds = state.timeline.totalDurationInFrames / state.project.fps;
     if (totalSeconds > 0) {
-      const fittedZoom = Math.max(30, Math.min(300, 900 / totalSeconds));
+      const fittedZoom = Math.max(30, Math.min(300, availableWidth / totalSeconds));
       dispatch({ type: 'SET_ZOOM', pixelsPerSecond: Math.round(fittedZoom) });
     }
   };
+
 
   return (
     <div
@@ -133,7 +141,17 @@ export const TimelineToolbar: React.FC = () => {
           size="sm"
           onClick={handleFitTimeline}
         />
+
+        <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--color-border-subtle, #E2E8F0)' }} />
+
+        <IconButton
+          icon={<ChevronDown size={14} />}
+          label="Thu gọn Timeline"
+          size="sm"
+          onClick={() => dispatch({ type: 'TOGGLE_TIMELINE_COLLAPSE' })}
+        />
       </div>
     </div>
   );
 };
+

@@ -10,7 +10,8 @@
 .assistant-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .assistant-muted { color: var(--text-muted); }
 .assistant-error { color: var(--danger); }
-.assistant-history { flex: 1; min-height: 120px; }
+.assistant-history { flex: 1; min-height: 120px; overflow: auto; }
+.assistant-panel > header, .assistant-panel > section:not(.assistant-history), .assistant-panel > form { flex-shrink: 0; }
 .assistant-panel article { margin: 8px 0; padding: 10px; background: var(--bg-surface); border-radius: 6px; }
 .assistant-proposal { border: 1px solid var(--accent); }
 .assistant-panel pre { max-height: 240px; overflow: auto; user-select: text; font-size: 11px; }
