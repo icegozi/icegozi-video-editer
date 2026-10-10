@@ -7,11 +7,9 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
-  ChevronDown,
 } from 'lucide-react';
-
 import { useEditor } from '../../state/editorStore';
-import { IconButton } from '../ui/IconButton';
+import { IconButton, Slider } from '../ui';
 
 export const TimelineToolbar: React.FC = () => {
   const { state, dispatch } = useEditor();
@@ -41,8 +39,7 @@ export const TimelineToolbar: React.FC = () => {
   };
 
   const handleFitTimeline = () => {
-    // Dynamically calculate visible timeline width based on active panel widths
-    const panelWidths = (state.isInspectorOpen ? 320 : 0) + 360 + 180; // Left panel (360) + track header (180) + inspector (320)
+    const panelWidths = (state.isInspectorOpen ? 320 : 0) + 380 + 180;
     const availableWidth = typeof window !== 'undefined'
       ? Math.max(400, window.innerWidth - panelWidths - 60)
       : 800;
@@ -54,7 +51,6 @@ export const TimelineToolbar: React.FC = () => {
     }
   };
 
-
   return (
     <div
       style={{
@@ -63,24 +59,25 @@ export const TimelineToolbar: React.FC = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: 'var(--bg-panel)',
-        borderBottom: '1px solid var(--border-subtle)',
+        backgroundColor: 'var(--color-surface, #FFFFFF)',
+        borderBottom: '1px solid var(--color-border-subtle, #E2E8F0)',
         boxSizing: 'border-box',
         flexShrink: 0,
       }}
+      data-testid="timeline-toolbar"
     >
       {/* Left: Editing Tools */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
         <IconButton
           icon={<MousePointer size={14} />}
-          label="Selection Tool (V)"
+          label="Công cụ chọn (V)"
           active={state.activeTool === 'select'}
           size="sm"
           onClick={() => dispatch({ type: 'SET_ACTIVE_TOOL', tool: 'select' })}
         />
         <IconButton
           icon={<Scissors size={14} />}
-          label="Split at Playhead (K)"
+          label="Cắt tại Playhead (K)"
           active={state.activeTool === 'split'}
           size="sm"
           onClick={handleSplitAtPlayhead}
@@ -88,18 +85,18 @@ export const TimelineToolbar: React.FC = () => {
         />
         <IconButton
           icon={<Trash2 size={14} />}
-          label="Delete Clip (Delete)"
+          label="Xóa clip đã chọn (Delete)"
           size="sm"
           onClick={handleDeleteSelected}
           disabled={!state.selectedClipId || state.project.scenes.length <= 1}
         />
 
-        <div style={{ width: '1px', height: '16px', backgroundColor: 'var(--border-default)', margin: '0 4px' }} />
+        <div style={{ width: '1px', height: '16px', backgroundColor: 'var(--color-border-subtle, #E2E8F0)', margin: '0 4px' }} />
 
         {/* Snapping Toggle */}
         <IconButton
           icon={<Magnet size={14} />}
-          label={state.snappingEnabled ? 'Disable Snapping (N)' : 'Enable Snapping (N)'}
+          label={state.snappingEnabled ? 'Tắt bắt dính Snapping (N)' : 'Bật bắt dính Snapping (N)'}
           active={state.snappingEnabled}
           size="sm"
           onClick={() => dispatch({ type: 'SET_SNAPPING', enabled: !state.snappingEnabled })}
@@ -110,48 +107,35 @@ export const TimelineToolbar: React.FC = () => {
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
         <IconButton
           icon={<ZoomOut size={14} />}
-          label="Zoom Out (-)"
+          label="Thu nhỏ Timeline (-)"
           size="sm"
           onClick={() => handleZoom(-20)}
         />
 
-        <div style={{ width: '80px', display: 'flex', alignItems: 'center' }}>
-          <input
-            type="range"
+        <div style={{ width: '84px', display: 'flex', alignItems: 'center' }}>
+          <Slider
             min={30}
             max={350}
             step={10}
             value={state.zoomPixelsPerSecond}
-            onChange={(e) => dispatch({ type: 'SET_ZOOM', pixelsPerSecond: parseInt(e.target.value) })}
-            style={{ width: '100%', height: '4px', accentColor: 'var(--accent)', cursor: 'pointer' }}
-            title={`Zoom: ${state.zoomPixelsPerSecond}px/s`}
+            onChange={(val) => dispatch({ type: 'SET_ZOOM', pixelsPerSecond: Math.round(val) })}
           />
         </div>
 
         <IconButton
           icon={<ZoomIn size={14} />}
-          label="Zoom In (+)"
+          label="Phóng to Timeline (+)"
           size="sm"
           onClick={() => handleZoom(20)}
         />
 
         <IconButton
           icon={<Maximize2 size={13} />}
-          label="Fit Timeline to View"
+          label="Khớp Timeline với màn hình"
           size="sm"
           onClick={handleFitTimeline}
-        />
-
-        <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--color-border-subtle, #E2E8F0)' }} />
-
-        <IconButton
-          icon={<ChevronDown size={14} />}
-          label="Thu gọn Timeline"
-          size="sm"
-          onClick={() => dispatch({ type: 'TOGGLE_TIMELINE_COLLAPSE' })}
         />
       </div>
     </div>
   );
 };
-

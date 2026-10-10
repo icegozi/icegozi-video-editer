@@ -124,8 +124,8 @@ export const TimelineClip: React.FC<TimelineClipProps> = ({
         bottom: '6px',
         borderRadius: '4px',
         backgroundColor: mediaStyle.bg,
-        border: isSelected ? '2px solid var(--accent)' : `1px solid ${mediaStyle.border}`,
-        boxShadow: isSelected ? '0 0 10px rgba(91, 140, 255, 0.35)' : 'none',
+        border: isSelected ? '2px solid var(--color-primary, #3568E8)' : `1px solid ${mediaStyle.border}`,
+        boxShadow: isSelected ? '0 0 0 2px var(--color-focus-ring, rgba(53, 104, 232, 0.35))' : 'none',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -166,7 +166,8 @@ export const TimelineClip: React.FC<TimelineClipProps> = ({
         <span
           style={{
             fontSize: '10px',
-            color: 'rgba(255, 255, 255, 0.6)',
+            color: 'rgba(255, 255, 255, 0.7)',
+            fontFamily: 'var(--font-mono, monospace)',
             fontVariantNumeric: 'tabular-nums',
             flexShrink: 0,
           }}
@@ -188,7 +189,7 @@ export const TimelineClip: React.FC<TimelineClipProps> = ({
           bottom: 0,
           width: '8px',
           cursor: 'ew-resize',
-          backgroundColor: isTrimmingRight ? 'var(--accent)' : 'rgba(255, 255, 255, 0.08)',
+          backgroundColor: isTrimmingRight ? 'var(--color-primary, #3568E8)' : 'rgba(255, 255, 255, 0.1)',
           transition: 'background-color 100ms ease',
         }}
       />
@@ -201,12 +202,13 @@ export const TimelineClip: React.FC<TimelineClipProps> = ({
             bottom: '100%',
             right: 0,
             marginBottom: '4px',
-            backgroundColor: 'var(--bg-panel-elevated)',
-            border: '1px solid var(--accent)',
+            backgroundColor: 'var(--color-stage, #0F172A)',
+            border: '1px solid var(--color-primary, #3568E8)',
             color: '#FFFFFF',
             padding: '2px 6px',
             borderRadius: '4px',
             fontSize: '10px',
+            fontFamily: 'var(--font-mono, monospace)',
             fontVariantNumeric: 'tabular-nums',
             whiteSpace: 'nowrap',
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',

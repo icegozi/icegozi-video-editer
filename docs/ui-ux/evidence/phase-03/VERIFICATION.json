@@ -1,0 +1,69 @@
+{
+  "phase_id": "03",
+  "patch_ids": ["UI-07"],
+  "commit_eligible": true,
+  "checks": {
+    "static_checks": {
+      "status": "PASS",
+      "commands_or_method": ["npm run typecheck"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-03/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "unit_tests": {
+      "status": "PASS",
+      "commands_or_method": ["npm test"],
+      "exit_code": 0,
+      "evidence_paths": ["tests/unit/timeline.test.ts", "tests/unit/editor-geometry.test.ts", "docs/ui-ux/evidence/phase-03/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "integration_tests": {
+      "status": "PASS",
+      "commands_or_method": ["npm test"],
+      "exit_code": 0,
+      "evidence_paths": ["tests/integration/track-visibility.test.tsx", "docs/ui-ux/evidence/phase-03/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "browser_e2e": {
+      "status": "PASS",
+      "commands_or_method": ["npx tsx scripts/capture-phase03.ts"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-03/screenshots/"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "visual_evidence": {
+      "status": "PASS",
+      "commands_or_method": ["Playwright headless screenshots of Timeline in Edit Focus and AI Focus at 1366x768 and 1920x1080"],
+      "exit_code": 0,
+      "evidence_paths": [
+        "docs/ui-ux/evidence/phase-03/screenshots/phase03_timeline_edit_focus_1366x768.png",
+        "docs/ui-ux/evidence/phase-03/screenshots/phase03_timeline_ai_focus_1366x768.png",
+        "docs/ui-ux/evidence/phase-03/screenshots/phase03_timeline_edit_focus_1920x1080.png",
+        "docs/ui-ux/evidence/phase-03/screenshots/phase03_timeline_ai_focus_1920x1080.png"
+      ],
+      "run_kind": "real",
+      "reason": null
+    },
+    "accessibility_checks": {
+      "status": "PASS",
+      "commands_or_method": ["Inspect track-header labels, tooltips, slider ARIA semantics and contrast"],
+      "exit_code": 0,
+      "evidence_paths": ["src/editor/components/timeline/TimelineTrackHeader.tsx", "src/editor/components/timeline/TimelineToolbar.tsx"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "regression_checks": {
+      "status": "PASS",
+      "commands_or_method": ["npm test (all 164 vitest + 41 siwc pass)", "npm run build:editor"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-03/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    }
+  },
+  "final_status": "DONE"
+}

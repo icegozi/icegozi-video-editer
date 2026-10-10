@@ -17,8 +17,8 @@ export const TimelineTrack: React.FC<TimelineTrackProps> = ({
         position: 'relative',
         width: `${totalWidthPx}px`,
         height: `${height}px`,
-        backgroundColor: 'var(--bg-app)',
-        borderBottom: '1px solid var(--border-subtle)',
+        backgroundColor: 'var(--color-app-bg, #F7F9FC)',
+        borderBottom: '1px solid var(--color-border-subtle, #E2E8F0)',
         boxSizing: 'border-box',
         overflow: 'hidden',
       }}
@@ -29,9 +29,9 @@ export const TimelineTrack: React.FC<TimelineTrackProps> = ({
           position: 'absolute',
           inset: 0,
           backgroundImage:
-            'linear-gradient(to right, var(--border-subtle) 1px, transparent 1px)',
+            'linear-gradient(to right, var(--color-border-subtle, #E2E8F0) 1px, transparent 1px)',
           backgroundSize: '100px 100%',
-          opacity: 0.25,
+          opacity: 0.35,
           pointerEvents: 'none',
         }}
       />

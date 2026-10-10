@@ -87,16 +87,17 @@ export const TimelineRuler: React.FC<TimelineRulerProps> = ({ totalWidthPx }) =>
       >
         <span
           style={{
-            fontSize: '9px',
-            color: 'var(--text-muted)',
+            fontSize: '10px',
+            color: 'var(--color-text-secondary, #52627A)',
             paddingLeft: '4px',
+            fontFamily: 'var(--font-mono, monospace)',
             fontVariantNumeric: 'tabular-nums',
             fontWeight: 500,
           }}
         >
           {timeLabel}
         </span>
-        <div style={{ width: '1px', height: '8px', backgroundColor: 'var(--border-strong)' }} />
+        <div style={{ width: '1px', height: '8px', backgroundColor: 'var(--color-border-subtle, #E2E8F0)' }} />
       </div>
     );
   }
@@ -111,8 +112,8 @@ export const TimelineRuler: React.FC<TimelineRulerProps> = ({ totalWidthPx }) =>
         position: 'relative',
         height: '28px',
         width: `${totalWidthPx}px`,
-        backgroundColor: 'var(--bg-surface)',
-        borderBottom: '1px solid var(--border-subtle)',
+        backgroundColor: 'var(--color-surface, #FFFFFF)',
+        borderBottom: '1px solid var(--color-border-subtle, #E2E8F0)',
         boxSizing: 'border-box',
         cursor: 'ew-resize',
         userSelect: 'none',

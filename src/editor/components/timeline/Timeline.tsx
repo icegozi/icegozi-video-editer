@@ -41,7 +41,7 @@ export const Timeline: React.FC = () => {
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        backgroundColor: 'var(--bg-panel)',
+        backgroundColor: 'var(--color-surface, #FFFFFF)',
         boxSizing: 'border-box',
         overflow: 'hidden',
       }}
@@ -65,8 +65,8 @@ export const Timeline: React.FC = () => {
             flexShrink: 0,
             display: 'flex',
             flexDirection: 'column',
-            borderRight: '1px solid var(--border-subtle)',
-            backgroundColor: 'var(--bg-panel)',
+            borderRight: '1px solid var(--color-border-subtle, #E2E8F0)',
+            backgroundColor: 'var(--color-surface, #FFFFFF)',
             zIndex: 30,
           }}
         >
@@ -74,14 +74,14 @@ export const Timeline: React.FC = () => {
           <div
             style={{
               height: '28px',
-              backgroundColor: 'var(--bg-surface)',
-              borderBottom: '1px solid var(--border-subtle)',
+              backgroundColor: 'var(--color-surface-muted, #F2F5FA)',
+              borderBottom: '1px solid var(--color-border-subtle, #E2E8F0)',
               padding: '0 12px',
               display: 'flex',
               alignItems: 'center',
-              fontSize: '10px',
+              fontSize: '11px',
               fontWeight: 600,
-              color: 'var(--text-muted)',
+              color: 'var(--color-text-secondary, #52627A)',
               letterSpacing: '0.04em',
               textTransform: 'uppercase',
             }}
@@ -173,7 +173,7 @@ export const Timeline: React.FC = () => {
             overflowX: 'auto',
             overflowY: 'hidden',
             position: 'relative',
-            backgroundColor: 'var(--bg-app)',
+            backgroundColor: 'var(--color-app-bg, #F7F9FC)',
           }}
         >
           {/* Ruler */}
