@@ -27,7 +27,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   isLoading = false,
 }) => {
   return (
-    <Dialog isOpen={isOpen} onClose={onClose} title={title} width={420}>
+    <Dialog isOpen={isOpen} onClose={onClose} title={title} width={420} role="alertdialog">
       <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
         {isDestructive && (
           <div

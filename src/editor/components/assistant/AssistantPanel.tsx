@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '../ui/Button';
+import { Select } from '../ui/Select';
+import { TextArea } from '../ui/TextArea';
 import { useAssistant } from '../../hooks/useAssistant';
 import './assistant.css';
 
@@ -25,19 +27,47 @@ export const AssistantPanel: React.FC<{ open: boolean; onClose: () => void }> = 
       <p className="assistant-muted">Dùng tài khoản và gói của bạn; quyền/model và hạn mức do OpenAI xác nhận. Bạn tự quản lý gói trong ChatGPT.</p>
       {assistant.status?.loginUrl && <a href={assistant.status.loginUrl} target="_blank" rel="noreferrer">Mở trình duyệt để đăng nhập và cấp quyền</a>}
       <a href="https://chatgpt.com/settings/usage" target="_blank" rel="noreferrer">Quản lý kết nối và usage</a>
-      {!!assistant.status?.profiles.length && <label>Tài khoản/workspace
-        <select value={auth?.profileId ?? ''} disabled={assistant.busy || connecting} onChange={(event) => void assistant.selectProfile(event.target.value)}>
-          <option value="" disabled>Chọn kết nối</option>
-          {assistant.status.profiles.map((profile) => <option key={profile.id} value={profile.id} disabled={profile.pending}>{profile.label} · {profile.status}</option>)}
-        </select>
-      </label>}
-      <label>Model của phiên ChatGPT
-        <select value={assistant.model} disabled={!auth?.sharing || assistant.busy || running} onChange={(event) => assistant.setModel(event.target.value)}>
-          {!assistant.models.length && <option value="">Chưa có catalog được xác nhận</option>}
-          {assistant.models.map((model) => <option key={model.slug} value={model.slug}>{model.displayName}</option>)}
-        </select>
-      </label>
-      <Button size="sm" disabled={!auth?.sharing || assistant.busy} onClick={() => void assistant.refreshModels()}>Tải lại model</Button>
+      {!!assistant.status?.profiles.length && (
+        <div style={{ marginTop: '8px' }}>
+          <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--color-text-secondary, #52627A)', display: 'block', marginBottom: '4px' }}>
+            Tài khoản/workspace
+          </label>
+          <Select
+            value={auth?.profileId ?? ''}
+            disabled={assistant.busy || connecting}
+            options={[
+              { value: '', label: 'Chọn kết nối', disabled: true },
+              ...assistant.status.profiles.map((profile) => ({
+                value: profile.id,
+                label: `${profile.label} · ${profile.status}`,
+                disabled: profile.pending,
+              })),
+            ]}
+            onChange={(event) => void assistant.selectProfile(event.target.value)}
+          />
+        </div>
+      )}
+      <div style={{ marginTop: '8px' }}>
+        <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--color-text-secondary, #52627A)', display: 'block', marginBottom: '4px' }}>
+          Model của phiên ChatGPT
+        </label>
+        <Select
+          value={assistant.model}
+          disabled={!auth?.sharing || assistant.busy || running}
+          options={
+            !assistant.models.length
+              ? [{ value: '', label: 'Chưa có catalog được xác nhận' }]
+              : assistant.models.map((model) => ({
+                  value: model.slug,
+                  label: model.displayName,
+                }))
+          }
+          onChange={(event) => assistant.setModel(event.target.value)}
+        />
+      </div>
+      <div style={{ marginTop: '8px' }}>
+        <Button size="sm" disabled={!auth?.sharing || assistant.busy} onClick={() => void assistant.refreshModels()}>Tải lại model</Button>
+      </div>
     </section>
     {(assistant.error || auth?.error || assistant.applyError || assistant.conversation?.error) && <p role="alert" className="assistant-error">{assistant.error ?? auth?.error?.message ?? assistant.applyError ?? assistant.conversation?.error}</p>}
     <section className="assistant-history" aria-label="Lịch sử chat">
@@ -62,9 +92,15 @@ export const AssistantPanel: React.FC<{ open: boolean; onClose: () => void }> = 
       {assistant.previewUrl && <video controls src={assistant.previewUrl} style={{ width: '100%' }} />}
     </section>
     <form onSubmit={(event) => { event.preventDefault(); if (text.trim()) void assistant.send(text); }}>
-      <label htmlFor="assistant-input">Yêu cầu chỉnh sửa</label>
-      <textarea id="assistant-input" value={text} maxLength={8000} onChange={(event) => setText(event.target.value)} placeholder="Ví dụ: rút ngắn scene đầu còn 60 frame…" />
-      <div className="assistant-actions">
+      <TextArea
+        id="assistant-input"
+        label="Yêu cầu chỉnh sửa"
+        value={text}
+        maxLength={8000}
+        onChange={(event) => setText(event.target.value)}
+        placeholder="Ví dụ: rút ngắn scene đầu còn 60 frame…"
+      />
+      <div className="assistant-actions" style={{ marginTop: '8px' }}>
         <Button type="submit" variant="primary" disabled={assistant.busy || running || !auth?.sharing || !assistant.model || !text.trim() || !assistant.status?.runtime.available}>Gửi</Button>
         <Button type="button" disabled={!running} onClick={() => void assistant.cancel()}>Dừng tác vụ</Button>
         <Button type="button" disabled={assistant.busy || running} onClick={() => void assistant.render()}>Render snapshot hiện tại</Button>

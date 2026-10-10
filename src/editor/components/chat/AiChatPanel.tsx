@@ -16,6 +16,7 @@ import {
 import { useAssistant } from '../../hooks/useAssistant';
 import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
+import { Select } from '../ui/Select';
 import { PromptComposer } from './PromptComposer';
 import { ProposalCard } from './ProposalCard';
 import { ApprovalCard } from './ApprovalCard';
@@ -314,29 +315,20 @@ export const AiChatPanel: React.FC = () => {
               Thêm tài khoản
             </Button>
             {assistant.status?.profiles && assistant.status.profiles.length > 0 && (
-              <select
-                aria-label="Tài khoản ChatGPT"
-                value={auth.profileId}
-                disabled={assistant.busy || connecting}
-                onChange={(event) => void assistant.selectProfile(event.target.value)}
-                style={{
-                  flex: 1,
-                  height: '24px',
-                  fontSize: '11px',
-                  padding: '0 6px',
-                  borderRadius: '4px',
-                  border: '1px solid var(--color-border-default, #CBD5E1)',
-                  backgroundColor: 'var(--color-surface, #FFFFFF)',
-                  color: 'var(--color-text-primary, #0F172A)',
-                  outline: 'none',
-                }}
-              >
-                {assistant.status.profiles.map((profile) => (
-                  <option key={profile.id} value={profile.id} disabled={profile.pending}>
-                    {profile.label}
-                  </option>
-                ))}
-              </select>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Select
+                  aria-label="Tài khoản ChatGPT"
+                  value={auth.profileId}
+                  disabled={assistant.busy || connecting}
+                  options={assistant.status.profiles.map((profile) => ({
+                    value: profile.id,
+                    label: profile.label,
+                    disabled: profile.pending,
+                  }))}
+                  onChange={(event) => void assistant.selectProfile(event.target.value)}
+                  style={{ height: '26px', fontSize: '11px', padding: '0 6px' }}
+                />
+              </div>
             )}
           </div>
         )}
@@ -363,33 +355,24 @@ export const AiChatPanel: React.FC = () => {
             >
               Model:
             </label>
-            <select
-              id="ai-model-select"
-              value={assistant.model}
-              disabled={assistant.busy || running}
-              onChange={(e) => assistant.setModel(e.target.value)}
-              style={{
-                flex: 1,
-                height: '24px',
-                fontSize: '11px',
-                padding: '0 6px',
-                borderRadius: '4px',
-                border: '1px solid var(--color-border-default, #CBD5E1)',
-                backgroundColor: 'var(--color-surface, #FFFFFF)',
-                color: 'var(--color-text-primary, #0F172A)',
-                outline: 'none',
-              }}
-            >
-              {assistant.models.length === 0 ? (
-                <option value="">Chưa có catalog model</option>
-              ) : (
-                assistant.models.map((m) => (
-                  <option key={m.slug} value={m.slug}>
-                    {m.displayName}
-                  </option>
-                ))
-              )}
-            </select>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Select
+                id="ai-model-select"
+                aria-label="Model AI"
+                value={assistant.model}
+                disabled={assistant.busy || running}
+                options={
+                  assistant.models.length === 0
+                    ? [{ value: '', label: 'Chưa có catalog model' }]
+                    : assistant.models.map((m) => ({
+                        value: m.slug,
+                        label: m.displayName,
+                      }))
+                }
+                onChange={(e) => assistant.setModel(e.target.value)}
+                style={{ height: '26px', fontSize: '11px', padding: '0 6px' }}
+              />
+            </div>
 
             <IconButton
               icon={<RefreshCw size={11} />}

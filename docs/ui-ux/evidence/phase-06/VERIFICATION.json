@@ -1,0 +1,78 @@
+{
+  "phase_id": "06",
+  "patch_ids": ["UI-12", "UI-13"],
+  "commit_eligible": true,
+  "checks": {
+    "static_checks": {
+      "status": "PASS",
+      "commands_or_method": ["npm run typecheck", "npm run build:editor"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-06/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "unit_tests": {
+      "status": "PASS",
+      "commands_or_method": ["npm test"],
+      "exit_code": 0,
+      "evidence_paths": [
+        "tests/unit/feedback-dialogs.test.tsx",
+        "tests/unit/ui-primitives.test.tsx",
+        "docs/ui-ux/evidence/phase-06/REPORT.md"
+      ],
+      "run_kind": "real",
+      "reason": null
+    },
+    "integration_tests": {
+      "status": "PASS",
+      "commands_or_method": ["npm test"],
+      "exit_code": 0,
+      "evidence_paths": [
+        "tests/integration/render-jobs.test.ts",
+        "docs/ui-ux/evidence/phase-06/REPORT.md"
+      ],
+      "run_kind": "real",
+      "reason": null
+    },
+    "browser_e2e": {
+      "status": "PASS",
+      "commands_or_method": ["npx tsx scripts/capture-phase06.ts"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-06/screenshots/"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "visual_evidence": {
+      "status": "PASS",
+      "commands_or_method": ["Playwright headless screenshots of Export Modal Dialog and Feedback/Shortcuts at 1366x768 and 1920x1080"],
+      "exit_code": 0,
+      "evidence_paths": [
+        "docs/ui-ux/evidence/phase-06/screenshots/phase06_export_modal_1366x768.png",
+        "docs/ui-ux/evidence/phase-06/screenshots/phase06_feedback_shortcuts_1366x768.png",
+        "docs/ui-ux/evidence/phase-06/screenshots/phase06_export_modal_1920x1080.png",
+        "docs/ui-ux/evidence/phase-06/screenshots/phase06_feedback_shortcuts_1920x1080.png"
+      ],
+      "run_kind": "real",
+      "reason": null
+    },
+    "accessibility_checks": {
+      "status": "PASS",
+      "commands_or_method": [
+        "Dialog role='dialog' and 'alertdialog', aria-modal='true', Escape key handler, focus retention, Vietnamese IME keycode 229 guards on global shortcuts, kbd tags for shortcuts"
+      ],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-06/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "regression_checks": {
+      "status": "PASS",
+      "commands_or_method": ["npm test", "npm run build:editor"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-06/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    }
+  },
+  "final_status": "DONE"
+}

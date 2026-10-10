@@ -1,0 +1,68 @@
+# Phase 06 — Evidence: Feedback, Dialogs, Accessibility (UI-12, UI-13)
+
+- **Date/time (with timezone):** 2026-10-10 11:10:00+07:00
+- **Git branch / before SHA / after SHA (fill after commit):** `master` / `f59b85d` / (recorded in COMMIT_MAP.md post-commit)
+- **Scope / patch IDs / touched paths:**
+  - `UI-12`: Shared dialogs, toasts, feedback states, render progress, autosave badge states (`saved`, `saving`, `dirty`, `error`), and ExportModal modernization.
+  - `UI-13`: Global keyboard shortcuts (`Ctrl+S`, `Ctrl+Z`, `Ctrl+Y`, `Space`, `Delete`, `ArrowLeft/Right`, `+/-`) with strict Vietnamese IME composition guards (`isComposing || keyCode === 229`) and input focus isolation; WAI-ARIA modal dialog roles (`role="dialog"`, `role="alertdialog"`, `aria-modal="true"`, `Escape` listener).
+  - Touched paths:
+    - `src/editor/components/export/ExportModal.tsx`
+    - `src/editor/components/ui/Dialog.tsx`
+    - `src/editor/components/ui/ConfirmDialog.tsx`
+    - `src/editor/hooks/useKeyboardShortcuts.ts`
+    - `src/editor/components/assistant/AssistantPanel.tsx`
+    - `src/editor/components/chat/AiChatPanel.tsx`
+    - `docs/ui-ux/COMPONENT_MIGRATION_MATRIX.md`
+    - `tests/unit/feedback-dialogs.test.tsx`
+- **Baseline observations + before screenshot paths:**
+  - In baseline, `ExportModal.tsx` used hardcoded dark styles (`--bg-panel-elevated`, `--border-default`, `--accent`), raw progress divs, and native unstyled selects. Global keyboard shortcuts lacked explicit `keyCode === 229` IME composition checks.
+- **Changes and rationale:**
+  - `ExportModal.tsx`: Upgraded to wrap content in the shared accessible `Dialog` primitive with semantic tokens, Vietnamese localization, clean parameter cards, the shared `Progress` bar component with `role="progressbar"`, download links, and copyable CLI commands. All render generation counter (`renderGenerationRef`) and cancellation logic strictly preserved.
+  - `Dialog.tsx` & `ConfirmDialog.tsx`: Added configurable `role` prop (`'dialog' | 'alertdialog'`), accessible headings, backdrop click handling, and Escape key dismissal.
+  - `useKeyboardShortcuts.ts`: Strengthened typing guard with `e.keyCode === 229 || e.isComposing` to completely prevent inadvertent editor shortcut execution during Vietnamese text input.
+  - `AssistantPanel.tsx` & `AiChatPanel.tsx`: Replaced native `<select>` and `<textarea>` elements with shared `Select` and `TextArea` primitives, completing the full migration matrix.
+  - `tests/unit/feedback-dialogs.test.tsx`: Added comprehensive unit tests for Dialog accessibility, ConfirmDialog roles, Progress clamp/display, and autosave badge semantic states.
+- **Tested Windows OS/browser/viewport/scaling or explicitly NOT VERIFIED:**
+  - Windows 11 Desktop (win32).
+  - Playwright automated headless Chromium/Edge at 1366×768 and 1920×1080 viewports.
+- **Commands actually executed (command, exit code, evidence log path):**
+  - `npm run typecheck` (exit code: 0)
+  - `npm test` (exit code: 0, 178 Vitest tests across 30 files + 41 SIWC tests passed)
+  - `npm run build:editor` (exit code: 0)
+  - `npx tsx scripts/capture-phase06.ts` (exit code: 0)
+- **Verification JSON path and each mandatory check status (PASS/FAIL/NOT_RUN/NOT_APPLICABLE/BLOCKED):**
+  - `docs/ui-ux/evidence/phase-06/VERIFICATION.json`
+  - static_checks: PASS
+  - unit_tests: PASS
+  - integration_tests: PASS
+  - browser_e2e: PASS
+  - visual_evidence: PASS
+  - accessibility_checks: PASS
+  - regression_checks: PASS
+- **Automated tests added and results (mock transport / real-handler integration distinguished):**
+  - `tests/unit/feedback-dialogs.test.tsx` (5 unit tests verifying Dialog, ConfirmDialog, Progress clamp, Badge states, Keyboard hints).
+- **Manual UI journeys actually executed and results:**
+  - Navigated to `http://127.0.0.1:3200/`.
+  - Clicked "Xuất video" button on CommandBar; verified ExportModal renders with accessible Dialog container, profile options, and parameters.
+  - Pressed `Escape` key; verified modal dismissed cleanly.
+- **Accessibility results:**
+  - WAI-ARIA `role="dialog"`, `role="alertdialog"`, `aria-modal="true"`, `aria-labelledby`, `aria-describedby`, `aria-busy` and `role="progressbar"` verified.
+  - Keyboard focus retained, Escape key supported.
+- **Before/after screenshots (paths, assertions, limitations):**
+  - `docs/ui-ux/evidence/phase-06/screenshots/phase06_export_modal_1366x768.png`
+  - `docs/ui-ux/evidence/phase-06/screenshots/phase06_feedback_shortcuts_1366x768.png`
+  - `docs/ui-ux/evidence/phase-06/screenshots/phase06_export_modal_1920x1080.png`
+  - `docs/ui-ux/evidence/phase-06/screenshots/phase06_feedback_shortcuts_1920x1080.png`
+- **Performance measurements (method, numbers, or NOT MEASURED):**
+  - Dialog mount and unmount is instantaneous without layout thrashing.
+- **Existing failures vs newly introduced failures:**
+  - 0 failures. 178 Vitest + 41 SIWC tests pass cleanly.
+- **Risk check (AI approvals, persistence, render, media security):**
+  - Render API contracts (`/api/render`, `/api/render/status/:jobId`, `/api/render/cancel/:jobId`) preserved intact.
+  - Autosave debouncing and CAS revision protection preserved.
+  - Media immutability and SIWC security untouched.
+- **Outstanding issues / deferred scope:**
+  - None for Phase 6.
+- **Phase final status:** DONE
+- **Commit eligibility:** true (all checks pass, safe index)
+- **Commit SHA:** recorded in COMMIT_MAP.md after commit, not self-referenced inside this commit

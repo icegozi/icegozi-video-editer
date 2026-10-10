@@ -27,7 +27,7 @@ export function useKeyboardShortcuts() {
       // STRICT FOCUS & IME GUARD:
       // If typing inside inputs/textareas/select or during IME composition (Vietnamese typing),
       // DO NOT override browser native undo or typing keys!
-      if (isInput || e.isComposing) {
+      if (isInput || e.isComposing || e.keyCode === 229) {
         return;
       }
 

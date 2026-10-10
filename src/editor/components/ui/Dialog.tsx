@@ -9,6 +9,7 @@ export interface DialogProps {
   description?: string;
   children: React.ReactNode;
   width?: string | number;
+  role?: 'dialog' | 'alertdialog';
 }
 
 export const Dialog: React.FC<DialogProps> = ({
@@ -18,6 +19,7 @@ export const Dialog: React.FC<DialogProps> = ({
   description,
   children,
   width = 480,
+  role = 'dialog',
 }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -57,7 +59,7 @@ export const Dialog: React.FC<DialogProps> = ({
     >
       <div
         ref={dialogRef}
-        role="dialog"
+        role={role}
         aria-modal="true"
         aria-labelledby="dialog-title"
         aria-describedby={description ? 'dialog-description' : undefined}
