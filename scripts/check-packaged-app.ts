@@ -66,21 +66,26 @@ try {
       assert.ok(path.relative(workspace, result.job.outputPath).startsWith(`generated${path.sep}previews${path.sep}`));
       const download = await fetch(origin + result.job.downloadUrl);
       assert.equal(download.status, 200);
-      assert.ok((await download.arrayBuffer()).byteLength > 1000);
+      const mp4 = await download.arrayBuffer();
+      assert.ok(mp4.byteLength > 1000);
+      const evidence = path.resolve('build', 'evidence', 'video-skills');
+      fs.mkdirSync(evidence, { recursive: true });
+      fs.writeFileSync(path.join(evidence, 'growing-a.mp4'), Buffer.from(mp4));
+      const previewUrl = await page.evaluate(async (src) => URL.createObjectURL(await (await fetch(src)).blob()), origin + result.job.downloadUrl);
       const dimensions = await page.evaluate((src) => new Promise<number[]>((resolve, reject) => {
         const video = document.createElement('video');
         video.onloadedmetadata = () => { resolve([video.videoWidth, video.videoHeight]); video.remove(); };
         video.onerror = () => { video.remove(); reject(new Error('Packaged MP4 could not be decoded')); };
         video.src = src;
         document.body.appendChild(video);
-      }), origin + result.job.downloadUrl);
+      }), previewUrl);
       assert.deepEqual(dimensions, [160, 90]);
       const growth = await page.evaluate((src) => new Promise<number[]>((resolve, reject) => {
         const video = document.createElement('video');
         video.preload = 'auto';
         video.onerror = () => reject(new Error('Scale preview could not be decoded'));
         const canvas = document.createElement('canvas');
-        const countPixels = () => {
+        const pixels = { count() {
           canvas.width = video.videoWidth; canvas.height = video.videoHeight;
           const context = canvas.getContext('2d')!;
           context.drawImage(video, 0, 0);
@@ -90,16 +95,20 @@ try {
             if (rgba[index] > 180 && rgba[index + 1] > 180 && rgba[index + 2] > 180) white++;
           }
           return white;
-        };
+        } };
         video.onloadeddata = () => {
-          const first = countPixels();
-          video.onseeked = () => { resolve([first, countPixels()]); video.remove(); };
+          video.onloadeddata = null;
+          const first = pixels.count();
+          video.onseeked = () => requestAnimationFrame(() => requestAnimationFrame(() => {
+            resolve([first, pixels.count()]); video.remove();
+          }));
           video.currentTime = video.duration - 1 / 6;
         };
         video.src = src;
         document.body.appendChild(video);
-      }), origin + result.job.downloadUrl);
+      }), previewUrl);
       assert.ok(growth[0] > 0 && growth[1] > growth[0] * 4, `The A must visibly grow: ${growth}`);
+      await page.evaluate((url) => URL.revokeObjectURL(url), previewUrl);
       console.info(`Packaged scale preview: white pixels ${growth[0]} -> ${growth[1]}.`);
       completed = true;
       break;
