@@ -56,3 +56,11 @@
 - Codex 0.160.1 uses explicit empty machine environments and only app-owned namespace tools. Generated experimental schemas are checked in; actual native startup rejects `untrusted`, so the adapter uses `on-request` and declines machine approvals.
 - Wait for the owned process to close before restarting with rotated credentials; immediate respawn can race its SQLite files. Keep runtime homes separate per registration/conversation.
 - Render CLI launches Node directly with an argument array, shell disabled and a filtered environment; codec/pixel format come from the render profile.
+
+## UI/UX & AI Workspace Conventions
+
+- The editor uses a light enterprise theme (`#F7F9FC` background, `#FFFFFF` surfaces, `#3568E8` brand blue) while preserving dark canvas interior (`#0F172A` / `#000000`) for video preview accuracy.
+- Left workspace integrates tabbed navigation between `AI Studio` (default) and `Assets & Scenes`.
+- CommandBar provides 3 workspace modes: `AI Focus` (default, collapses secondary panels for AI & canvas), `Edit Focus` (full multi-track timeline & inspector), and `Preview Focus` (maximizes canvas).
+- PromptComposer enforces Vietnamese IME composition guards (`e.nativeEvent.isComposing || e.keyCode === 229`) to prevent premature submission during Telex/VNI candidate selection.
+- Proposed AI modifications require human-in-the-loop approval via `ProposalCard` before applying through `APPLY_AI_PROJECT_CHANGE` with 1-click `Ctrl+Z` undo.
