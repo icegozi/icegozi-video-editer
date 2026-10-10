@@ -21,48 +21,48 @@ export const TextInspector: React.FC<TextInspectorProps> = ({ scene }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '12px' }}>
-      <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>
-        <h4 style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
-          Text Scene Inspector
+      <div style={{ borderBottom: '1px solid var(--color-border-subtle, #E2E8F0)', paddingBottom: '8px' }}>
+        <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary, #17233B)' }}>
+          Thuộc tính Scene Văn bản
         </h4>
-        <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>ID: {scene.id}</p>
+        <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--color-text-secondary, #52627A)' }}>ID: {scene.id}</p>
       </div>
 
       {/* Title */}
       <div>
-        <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-          Headline / Title
+        <label style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-secondary, #52627A)', marginBottom: '4px' }}>
+          Tiêu đề chính
         </label>
         <Input
           value={scene.title}
           onChange={(e) => update({ title: e.target.value })}
-          placeholder="Main Title"
+          placeholder="Tiêu đề chính…"
         />
       </div>
 
       {/* Subtitle */}
       <div>
-        <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-          Subtitle
+        <label style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-secondary, #52627A)', marginBottom: '4px' }}>
+          Tiêu đề phụ
         </label>
         <Input
           value={scene.subtitle || ''}
           onChange={(e) => update({ subtitle: e.target.value })}
-          placeholder="Optional Subtitle"
+          placeholder="Tiêu đề phụ tùy chọn…"
         />
       </div>
 
       {/* Animation Type */}
       <div>
-        <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-          Animation Type
+        <label style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-secondary, #52627A)', marginBottom: '4px' }}>
+          Hiệu ứng xuất hiện
         </label>
         <Select
           value={scene.animationType || 'fade'}
           options={[
-            { value: 'fade', label: 'Fade In / Out' },
-            { value: 'slide-up', label: 'Slide Up' },
-            { value: 'typewriter', label: 'Typewriter' },
+            { value: 'fade', label: 'Làm mờ (Fade)' },
+            { value: 'slide-up', label: 'Trượt lên (Slide Up)' },
+            { value: 'typewriter', label: 'Máy đánh chữ (Typewriter)' },
           ]}
           onChange={(e) => update({ animationType: e.target.value as any })}
         />
@@ -71,8 +71,8 @@ export const TextInspector: React.FC<TextInspectorProps> = ({ scene }) => {
       {/* Duration */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-          <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Duration</label>
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+          <label style={{ fontSize: '11px', color: 'var(--color-text-secondary, #52627A)' }}>Thời lượng</label>
+          <span style={{ fontSize: '11px', color: 'var(--color-text-secondary, #52627A)', fontFamily: 'var(--font-mono, monospace)', fontVariantNumeric: 'tabular-nums' }}>
             {scene.durationInFrames} frames ({durationSec}s)
           </span>
         </div>
@@ -91,8 +91,8 @@ export const TextInspector: React.FC<TextInspectorProps> = ({ scene }) => {
       {/* Colors: Text & Background */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
         <div>
-          <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-            Text Color
+          <label style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-secondary, #52627A)', marginBottom: '4px' }}>
+            Màu chữ
           </label>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <input
@@ -103,8 +103,8 @@ export const TextInspector: React.FC<TextInspectorProps> = ({ scene }) => {
                 width: '28px',
                 height: '28px',
                 padding: 0,
-                border: 'none',
-                borderRadius: '4px',
+                border: '1px solid var(--color-border-subtle, #E2E8F0)',
+                borderRadius: 'var(--radius-controlSm, 6px)',
                 cursor: 'pointer',
                 backgroundColor: 'transparent',
               }}
@@ -118,8 +118,8 @@ export const TextInspector: React.FC<TextInspectorProps> = ({ scene }) => {
         </div>
 
         <div>
-          <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-            Background
+          <label style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-secondary, #52627A)', marginBottom: '4px' }}>
+            Màu nền
           </label>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <input
@@ -130,8 +130,8 @@ export const TextInspector: React.FC<TextInspectorProps> = ({ scene }) => {
                 width: '28px',
                 height: '28px',
                 padding: 0,
-                border: 'none',
-                borderRadius: '4px',
+                border: '1px solid var(--color-border-subtle, #E2E8F0)',
+                borderRadius: 'var(--radius-controlSm, 6px)',
                 cursor: 'pointer',
                 backgroundColor: 'transparent',
               }}

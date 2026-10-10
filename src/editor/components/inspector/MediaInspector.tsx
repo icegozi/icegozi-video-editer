@@ -4,6 +4,7 @@ import { VideoSceneConfig, ImageSceneConfig } from '../../../domain/video/Scene'
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { Slider } from '../ui/Slider';
+import { Checkbox } from '../ui/Checkbox';
 import { getMinSceneDuration } from '../../../domain/video/sceneDuration';
 
 export interface MediaInspectorProps {
@@ -22,36 +23,36 @@ export const MediaInspector: React.FC<MediaInspectorProps> = ({ scene }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '12px' }}>
-      <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>
-        <h4 style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
-          {isVideo ? 'Video Media Inspector' : 'Image Media Inspector'}
+      <div style={{ borderBottom: '1px solid var(--color-border-subtle, #E2E8F0)', paddingBottom: '8px' }}>
+        <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary, #17233B)' }}>
+          {isVideo ? 'Thuộc tính Scene Video' : 'Thuộc tính Scene Hình ảnh'}
         </h4>
-        <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>ID: {scene.id}</p>
+        <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--color-text-secondary, #52627A)' }}>ID: {scene.id}</p>
       </div>
 
       {/* Asset Source Path */}
       <div>
-        <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-          File Source
+        <label style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-secondary, #52627A)', marginBottom: '4px' }}>
+          Đường dẫn tệp nguồn
         </label>
         <Input
           value={scene.src}
           onChange={(e) => update({ src: e.target.value })}
-          placeholder="assets/video/..."
+          placeholder="assets/video/…"
         />
       </div>
 
       {/* Object Fit */}
       <div>
-        <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-          Scaling / Fit
+        <label style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-secondary, #52627A)', marginBottom: '4px' }}>
+          Tỷ lệ hiển thị (Scaling)
         </label>
         <Select
           value={scene.objectFit || 'cover'}
           options={[
-            { value: 'cover', label: 'Cover (Fill Frame)' },
-            { value: 'contain', label: 'Contain (Fit with Bars)' },
-            { value: 'fill', label: 'Stretch to Fill' },
+            { value: 'cover', label: 'Bao phủ (Cover - Lấp đầy khung)' },
+            { value: 'contain', label: 'Vừa vặn (Contain - Giữ nguyên tỷ lệ)' },
+            { value: 'fill', label: 'Kéo giãn (Fill - Khớp khung hình)' },
           ]}
           onChange={(e) => update({ objectFit: e.target.value as any })}
         />
@@ -60,8 +61,8 @@ export const MediaInspector: React.FC<MediaInspectorProps> = ({ scene }) => {
       {/* Duration */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-          <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Duration</label>
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+          <label style={{ fontSize: '11px', color: 'var(--color-text-secondary, #52627A)' }}>Thời lượng</label>
+          <span style={{ fontSize: '11px', color: 'var(--color-text-secondary, #52627A)', fontFamily: 'var(--font-mono, monospace)', fontVariantNumeric: 'tabular-nums' }}>
             {scene.durationInFrames} frames ({durationSec}s)
           </span>
         </div>
@@ -82,8 +83,8 @@ export const MediaInspector: React.FC<MediaInspectorProps> = ({ scene }) => {
         <>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-              <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Volume</label>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+              <label style={{ fontSize: '11px', color: 'var(--color-text-secondary, #52627A)' }}>Âm lượng</label>
+              <span style={{ fontSize: '11px', color: 'var(--color-text-secondary, #52627A)', fontFamily: 'var(--font-mono, monospace)', fontVariantNumeric: 'tabular-nums' }}>
                 {Math.round(((scene as VideoSceneConfig).volume ?? 1) * 100)}%
               </span>
             </div>
@@ -97,16 +98,16 @@ export const MediaInspector: React.FC<MediaInspectorProps> = ({ scene }) => {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-              Playback Rate
+            <label style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-secondary, #52627A)', marginBottom: '4px' }}>
+              Tốc độ phát
             </label>
             <Select
               value={(scene as VideoSceneConfig).playbackRate ?? 1}
               options={[
-                { value: 0.5, label: '0.5x Slow' },
-                { value: 1, label: '1.0x Normal' },
-                { value: 1.5, label: '1.5x Fast' },
-                { value: 2, label: '2.0x Double' },
+                { value: 0.5, label: '0.5x (Chậm)' },
+                { value: 1, label: '1.0x (Chuẩn)' },
+                { value: 1.5, label: '1.5x (Nhanh)' },
+                { value: 2, label: '2.0x (Gấp đôi)' },
               ]}
               onChange={(e) => update({ playbackRate: parseFloat(e.target.value) })}
             />
@@ -116,17 +117,13 @@ export const MediaInspector: React.FC<MediaInspectorProps> = ({ scene }) => {
 
       {/* Image Specific: Subtle Zoom Animation */}
       {!isVideo && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <input
-            type="checkbox"
+        <div style={{ marginTop: '4px' }}>
+          <Checkbox
             id="zoomAnim"
             checked={!!(scene as ImageSceneConfig).zoomAnimation}
-            onChange={(e) => update({ zoomAnimation: e.target.checked })}
-            style={{ accentColor: 'var(--accent)', cursor: 'pointer' }}
+            onChange={(checked) => update({ zoomAnimation: checked })}
+            label="Kích hoạt hiệu ứng zoom chuyển động Ken Burns"
           />
-          <label htmlFor="zoomAnim" style={{ fontSize: '11px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-            Enable Ken Burns slow zoom animation
-          </label>
         </div>
       )}
     </div>

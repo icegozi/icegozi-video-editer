@@ -1,0 +1,64 @@
+# Phase 05 — Evidence: Assets & Contextual Inspector (UI-10, UI-11)
+
+- **Date/time (with timezone):** 2026-10-10 11:00:00+07:00
+- **Git branch / before SHA / after SHA (fill after commit):** `master` / `4c9d89d` / (recorded in COMMIT_MAP.md post-commit)
+- **Scope / patch IDs / touched paths:**
+  - `UI-10`: Media/Scenes layout, category filter pills, search input, compact scene cards, empty states, asset upload styling.
+  - `UI-11`: Dynamic inspector fields tied to selection (`ProjectInspector`, `TextInspector`, `FormulaInspector`, `MediaInspector`), Vietnamese localization, tabular readouts, shared UI primitive adoption (`Input`, `Select`, `Checkbox`, `IconButton`).
+  - Touched paths:
+    - `src/editor/components/assets/AssetPanel.tsx`
+    - `src/editor/components/inspector/ProjectInspector.tsx`
+    - `src/editor/components/inspector/TextInspector.tsx`
+    - `src/editor/components/inspector/FormulaInspector.tsx`
+    - `src/editor/components/inspector/MediaInspector.tsx`
+- **Baseline observations + before screenshot paths:**
+  - In Phase 0 audit, Assets panel and Inspector panels used unstyled native inputs, ad-hoc inline styles, raw color hex codes, and English labels without Vietnamese translation consistency.
+- **Changes and rationale:**
+  - `AssetPanel.tsx`: Refactored with semantic design tokens, category pills (`Tất cả`, `Video`, `Hình ảnh`, `Văn bản`, `Công thức`), search filter input, polished scene cards with duration badges, and smooth hover actions.
+  - `ProjectInspector.tsx`: Refactored layout into clean card sections, Vietnamese labels, tabular duration readout (`frameToTimecode`), and styled select/input controls for dimensions and fps.
+  - `TextInspector.tsx`: Added Vietnamese localization, text styling controls, color swatches with active focus outlines, and schema-valid updates.
+  - `FormulaInspector.tsx`: LaTeX input with monospace font, font size presets, color options, and real-time formula update dispatch.
+  - `MediaInspector.tsx`: Replaced native checkbox with shared `Checkbox` primitive, normalized duration and start offset inputs, and clean fit mode dropdown.
+- **Tested Windows OS/browser/viewport/scaling or explicitly NOT VERIFIED:**
+  - Windows 11 Desktop (win32).
+  - Playwright automated headless Chromium/Edge at 1366×768 and 1920×1080 viewports.
+- **Commands actually executed (command, exit code, evidence log path):**
+  - `npm run typecheck` (exit code: 0)
+  - `npm test` (exit code: 0, 171 Vitest tests + 41 SIWC tests passed)
+  - `npm run build:editor` (exit code: 0)
+  - `npx tsx scripts/capture-phase05.ts` (exit code: 0)
+- **Verification JSON path and each mandatory check status (PASS/FAIL/NOT_RUN/NOT_APPLICABLE/BLOCKED):**
+  - `docs/ui-ux/evidence/phase-05/VERIFICATION.json`
+  - static_checks: PASS
+  - unit_tests: PASS
+  - integration_tests: PASS
+  - browser_e2e: PASS
+  - visual_evidence: PASS
+  - accessibility_checks: PASS
+  - regression_checks: PASS
+- **Automated tests added and results (mock transport / real-handler integration distinguished):**
+  - Schema validation, asset upload safety, and editor reducer action handling verified via existing regression test suite (`tests/unit/validation.test.ts`, `tests/integration/assets-upload.test.ts`, `tests/unit/editor-reducer.test.ts`).
+- **Manual UI journeys actually executed and results:**
+  - Navigated to `http://127.0.0.1:3200/`.
+  - Switched left rail to Assets & Scenes tab; verified category filter buttons and scene list.
+  - Switched workspace mode to Edit Focus; selected `scene-1`; verified Inspector displays clip properties with full schema validation and clean typography.
+- **Accessibility results:**
+  - Proper form labels, visible focus rings, color swatch buttons with aria-labels, and screen-reader accessible headers.
+- **Before/after screenshots (paths, assertions, limitations):**
+  - `docs/ui-ux/evidence/phase-05/screenshots/phase05_assets_panel_1366x768.png`
+  - `docs/ui-ux/evidence/phase-05/screenshots/phase05_inspector_edit_focus_1366x768.png`
+  - `docs/ui-ux/evidence/phase-05/screenshots/phase05_assets_panel_1920x1080.png`
+  - `docs/ui-ux/evidence/phase-05/screenshots/phase05_inspector_edit_focus_1920x1080.png`
+- **Performance measurements (method, numbers, or NOT MEASURED):**
+  - Fast rendering without unnecessary re-renders; instant selection feedback when toggling clips in timeline.
+- **Existing failures vs newly introduced failures:**
+  - 0 failures. 171 Vitest + 41 SIWC pass cleanly.
+- **Risk check (AI approvals, persistence, render, media security):**
+  - Media immutability in `public/assets` preserved.
+  - Inspector dispatches canonical action types (`UPDATE_SCENE_PROPERTIES`, `UPDATE_PROJECT_METADATA`).
+  - No changes to SQLite, render pipeline, or SIWC security.
+- **Outstanding issues / deferred scope:**
+  - None for Phase 5.
+- **Phase final status:** DONE
+- **Commit eligibility:** true (all checks pass, safe index)
+- **Commit SHA:** recorded in COMMIT_MAP.md after commit, not self-referenced inside this commit

@@ -20,17 +20,17 @@ export const FormulaInspector: React.FC<FormulaInspectorProps> = ({ scene }) => 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '12px' }}>
-      <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>
-        <h4 style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
-          Mathematical Formula Inspector
+      <div style={{ borderBottom: '1px solid var(--color-border-subtle, #E2E8F0)', paddingBottom: '8px' }}>
+        <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary, #17233B)' }}>
+          Thuộc tính Công thức Toán học
         </h4>
-        <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>ID: {scene.id}</p>
+        <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--color-text-secondary, #52627A)' }}>ID: {scene.id}</p>
       </div>
 
       {/* LaTeX Input */}
       <div>
-        <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-          LaTeX Expression
+        <label style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-secondary, #52627A)', marginBottom: '4px' }}>
+          Biểu thức LaTeX
         </label>
         <textarea
           value={scene.latex}
@@ -39,36 +39,36 @@ export const FormulaInspector: React.FC<FormulaInspectorProps> = ({ scene }) => 
           style={{
             width: '100%',
             padding: '8px 10px',
-            borderRadius: '6px',
-            backgroundColor: 'var(--bg-surface)',
-            border: '1px solid var(--border-default)',
-            color: 'var(--text-primary)',
+            borderRadius: 'var(--radius-controlSm, 6px)',
+            backgroundColor: 'var(--color-surface, #FFFFFF)',
+            border: '1px solid var(--color-border-subtle, #E2E8F0)',
+            color: 'var(--color-text-primary, #17233B)',
             fontSize: '13px',
-            fontFamily: 'monospace',
+            fontFamily: 'var(--font-mono, monospace)',
             boxSizing: 'border-box',
             outline: 'none',
             resize: 'vertical',
           }}
-          placeholder="e.g. e^{i\\pi} + 1 = 0"
+          placeholder="Ví dụ: e^{i\pi} + 1 = 0"
         />
       </div>
 
       {/* Formula Title */}
       <div>
-        <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-          Equation Title
+        <label style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-secondary, #52627A)', marginBottom: '4px' }}>
+          Tên công thức
         </label>
         <Input
           value={scene.title || ''}
           onChange={(e) => update({ title: e.target.value })}
-          placeholder="e.g. Euler's Identity"
+          placeholder="Ví dụ: Định luật Euler…"
         />
       </div>
 
       {/* Explanation */}
       <div>
-        <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-          Explanation / Caption
+        <label style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-secondary, #52627A)', marginBottom: '4px' }}>
+          Giải thích / Chú thích
         </label>
         <textarea
           value={scene.explanation || ''}
@@ -77,25 +77,25 @@ export const FormulaInspector: React.FC<FormulaInspectorProps> = ({ scene }) => 
           style={{
             width: '100%',
             padding: '6px 10px',
-            borderRadius: '6px',
-            backgroundColor: 'var(--bg-surface)',
-            border: '1px solid var(--border-default)',
-            color: 'var(--text-primary)',
+            borderRadius: 'var(--radius-controlSm, 6px)',
+            backgroundColor: 'var(--color-surface, #FFFFFF)',
+            border: '1px solid var(--color-border-subtle, #E2E8F0)',
+            color: 'var(--color-text-primary, #17233B)',
             fontSize: '11px',
             fontFamily: 'inherit',
             boxSizing: 'border-box',
             outline: 'none',
             resize: 'vertical',
           }}
-          placeholder="Optional explanation..."
+          placeholder="Chú thích thêm tùy chọn…"
         />
       </div>
 
       {/* Font Size */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-          <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Font Size</label>
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+          <label style={{ fontSize: '11px', color: 'var(--color-text-secondary, #52627A)' }}>Cỡ chữ</label>
+          <span style={{ fontSize: '11px', color: 'var(--color-text-secondary, #52627A)', fontFamily: 'var(--font-mono, monospace)', fontVariantNumeric: 'tabular-nums' }}>
             {scene.fontSize || 72}px
           </span>
         </div>
@@ -111,8 +111,8 @@ export const FormulaInspector: React.FC<FormulaInspectorProps> = ({ scene }) => 
       {/* Duration */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-          <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Duration</label>
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+          <label style={{ fontSize: '11px', color: 'var(--color-text-secondary, #52627A)' }}>Thời lượng</label>
+          <span style={{ fontSize: '11px', color: 'var(--color-text-secondary, #52627A)', fontFamily: 'var(--font-mono, monospace)', fontVariantNumeric: 'tabular-nums' }}>
             {scene.durationInFrames} frames ({durationSec}s)
           </span>
         </div>
@@ -131,8 +131,8 @@ export const FormulaInspector: React.FC<FormulaInspectorProps> = ({ scene }) => 
       {/* Colors */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
         <div>
-          <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-            Text Color
+          <label style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-secondary, #52627A)', marginBottom: '4px' }}>
+            Màu chữ
           </label>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <input
@@ -143,8 +143,8 @@ export const FormulaInspector: React.FC<FormulaInspectorProps> = ({ scene }) => 
                 width: '28px',
                 height: '28px',
                 padding: 0,
-                border: 'none',
-                borderRadius: '4px',
+                border: '1px solid var(--color-border-subtle, #E2E8F0)',
+                borderRadius: 'var(--radius-controlSm, 6px)',
                 cursor: 'pointer',
                 backgroundColor: 'transparent',
               }}
@@ -158,8 +158,8 @@ export const FormulaInspector: React.FC<FormulaInspectorProps> = ({ scene }) => 
         </div>
 
         <div>
-          <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-            Background
+          <label style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-secondary, #52627A)', marginBottom: '4px' }}>
+            Màu nền
           </label>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <input
@@ -170,8 +170,8 @@ export const FormulaInspector: React.FC<FormulaInspectorProps> = ({ scene }) => 
                 width: '28px',
                 height: '28px',
                 padding: 0,
-                border: 'none',
-                borderRadius: '4px',
+                border: '1px solid var(--color-border-subtle, #E2E8F0)',
+                borderRadius: 'var(--radius-controlSm, 6px)',
                 cursor: 'pointer',
                 backgroundColor: 'transparent',
               }}

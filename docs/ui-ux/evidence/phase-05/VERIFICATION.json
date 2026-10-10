@@ -1,0 +1,78 @@
+{
+  "phase_id": "05",
+  "patch_ids": ["UI-10", "UI-11"],
+  "commit_eligible": true,
+  "checks": {
+    "static_checks": {
+      "status": "PASS",
+      "commands_or_method": ["npm run typecheck", "npm run build:editor"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-05/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "unit_tests": {
+      "status": "PASS",
+      "commands_or_method": ["npm test"],
+      "exit_code": 0,
+      "evidence_paths": [
+        "tests/unit/ui-primitives.test.tsx",
+        "tests/unit/validation.test.ts",
+        "tests/unit/editor-reducer.test.ts",
+        "docs/ui-ux/evidence/phase-05/REPORT.md"
+      ],
+      "run_kind": "real",
+      "reason": null
+    },
+    "integration_tests": {
+      "status": "PASS",
+      "commands_or_method": ["npm test"],
+      "exit_code": 0,
+      "evidence_paths": [
+        "tests/integration/assets-upload.test.ts",
+        "tests/integration/formula-render.test.ts",
+        "docs/ui-ux/evidence/phase-05/REPORT.md"
+      ],
+      "run_kind": "real",
+      "reason": null
+    },
+    "browser_e2e": {
+      "status": "PASS",
+      "commands_or_method": ["npx tsx scripts/capture-phase05.ts"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-05/screenshots/"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "visual_evidence": {
+      "status": "PASS",
+      "commands_or_method": ["Playwright headless screenshots of Assets panel and contextual Inspector at 1366x768 and 1920x1080"],
+      "exit_code": 0,
+      "evidence_paths": [
+        "docs/ui-ux/evidence/phase-05/screenshots/phase05_assets_panel_1366x768.png",
+        "docs/ui-ux/evidence/phase-05/screenshots/phase05_inspector_edit_focus_1366x768.png",
+        "docs/ui-ux/evidence/phase-05/screenshots/phase05_assets_panel_1920x1080.png",
+        "docs/ui-ux/evidence/phase-05/screenshots/phase05_inspector_edit_focus_1920x1080.png"
+      ],
+      "run_kind": "real",
+      "reason": null
+    },
+    "accessibility_checks": {
+      "status": "PASS",
+      "commands_or_method": ["Form input labels, color swatches with active focus outlines, aria-labels on action buttons and search input"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-05/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    },
+    "regression_checks": {
+      "status": "PASS",
+      "commands_or_method": ["npm test", "npm run build:editor"],
+      "exit_code": 0,
+      "evidence_paths": ["docs/ui-ux/evidence/phase-05/REPORT.md"],
+      "run_kind": "real",
+      "reason": null
+    }
+  },
+  "final_status": "DONE"
+}

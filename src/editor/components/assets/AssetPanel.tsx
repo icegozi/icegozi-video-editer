@@ -189,7 +189,7 @@ export const AssetPanel: React.FC = () => {
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        backgroundColor: 'var(--bg-panel)',
+        backgroundColor: 'var(--color-surface, #FFFFFF)',
         boxSizing: 'border-box',
         overflow: 'hidden',
       }}
@@ -208,20 +208,20 @@ export const AssetPanel: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
             <IconButton
               icon={<Upload size={13} />}
-              label="Import Media File (Video, Image, Audio, SRT)"
+              label="Tải lên tệp đa phương tiện (Video, Image, Audio, SRT)"
               size="sm"
               disabled={isUploading}
               onClick={() => fileInputRef.current?.click()}
             />
             <IconButton
               icon={<Sigma size={13} />}
-              label="Add Formula Scene"
+              label="Thêm scene công thức toán học"
               size="sm"
               onClick={() => handleAddScene('formula')}
             />
             <IconButton
               icon={<Type size={13} />}
-              label="Add Text Scene"
+              label="Thêm scene văn bản"
               size="sm"
               onClick={() => handleAddScene('text')}
             />
@@ -230,27 +230,27 @@ export const AssetPanel: React.FC = () => {
       />
 
       {isUploading && (
-        <div style={{ padding: '6px 12px', backgroundColor: 'var(--accent)', color: '#FFFFFF', fontSize: '11px', textAlign: 'center' }}>
-          Uploading and registering media asset...
+        <div style={{ padding: '6px 12px', backgroundColor: 'var(--color-primary, #3568E8)', color: '#FFFFFF', fontSize: '11px', textAlign: 'center' }}>
+          Đang tải lên và chuẩn hóa tệp đa phương tiện…
         </div>
       )}
 
       {/* Search Bar */}
-      <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-subtle)' }}>
+      <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--color-border-subtle, #E2E8F0)' }}>
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
           <Search
             size={13}
             style={{
               position: 'absolute',
               left: '10px',
-              color: 'var(--text-muted)',
+              color: 'var(--color-text-secondary, #52627A)',
               pointerEvents: 'none',
             }}
           />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Filter scenes..."
+            placeholder="Tìm kiếm scenes & media…"
             style={{ paddingLeft: '30px', height: '28px', fontSize: '11px' }}
           />
         </div>
@@ -262,8 +262,8 @@ export const AssetPanel: React.FC = () => {
           display: 'flex',
           gap: '4px',
           padding: '6px 12px',
-          borderBottom: '1px solid var(--border-subtle)',
-          backgroundColor: 'var(--bg-surface)',
+          borderBottom: '1px solid var(--color-border-subtle, #E2E8F0)',
+          backgroundColor: 'var(--color-surface-muted, #F2F5FA)',
           overflowX: 'auto',
         }}
       >
@@ -273,20 +273,19 @@ export const AssetPanel: React.FC = () => {
             onClick={() => setFilter(tab)}
             style={{
               padding: '2px 8px',
-              borderRadius: '4px',
-              border: 'none',
-              fontSize: '10px',
+              borderRadius: 'var(--radius-controlSm, 6px)',
+              border: filter === tab ? '1px solid var(--color-primary, #3568E8)' : '1px solid transparent',
+              fontSize: '11px',
               fontWeight: 500,
-              textTransform: 'uppercase',
-              letterSpacing: '0.02em',
-              backgroundColor: filter === tab ? 'var(--accent)' : 'transparent',
-              color: filter === tab ? '#FFFFFF' : 'var(--text-secondary)',
+              textTransform: 'capitalize',
+              backgroundColor: filter === tab ? 'var(--color-primary-subtle, #EEF3FF)' : 'transparent',
+              color: filter === tab ? 'var(--color-primary, #3568E8)' : 'var(--color-text-secondary, #52627A)',
               cursor: 'pointer',
               transition: 'background-color 100ms ease, color 100ms ease',
               whiteSpace: 'nowrap',
             }}
           >
-            {tab}
+            {tab === 'all' ? 'Tất cả' : tab}
           </button>
         ))}
       </div>
@@ -307,11 +306,11 @@ export const AssetPanel: React.FC = () => {
             style={{
               padding: '24px 12px',
               textAlign: 'center',
-              color: 'var(--text-muted)',
-              fontSize: '11px',
+              color: 'var(--color-text-secondary, #52627A)',
+              fontSize: '12px',
             }}
           >
-            No matching items found.
+            Không tìm thấy scene phù hợp.
           </div>
         ) : (
           filteredScenes.map((scene) => {
@@ -325,9 +324,9 @@ export const AssetPanel: React.FC = () => {
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: '8px 10px',
-                  borderRadius: '4px',
-                  backgroundColor: isSelected ? 'var(--bg-panel-elevated)' : 'transparent',
-                  border: isSelected ? '1px solid var(--border-focus)' : '1px solid transparent',
+                  borderRadius: 'var(--radius-controlSm, 6px)',
+                  backgroundColor: isSelected ? 'var(--color-primary-subtle, #EEF3FF)' : 'transparent',
+                  border: isSelected ? '1px solid var(--color-primary, #3568E8)' : '1px solid transparent',
                   cursor: 'pointer',
                   transition: 'background-color 80ms ease',
                 }}
@@ -337,8 +336,9 @@ export const AssetPanel: React.FC = () => {
                     style={{
                       width: '24px',
                       height: '24px',
-                      borderRadius: '4px',
-                      backgroundColor: 'var(--bg-surface)',
+                      borderRadius: 'var(--radius-controlSm, 6px)',
+                      backgroundColor: 'var(--color-surface, #FFFFFF)',
+                      border: '1px solid var(--color-border-subtle, #E2E8F0)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -352,7 +352,7 @@ export const AssetPanel: React.FC = () => {
                       style={{
                         fontSize: '12px',
                         fontWeight: 500,
-                        color: 'var(--text-primary)',
+                        color: 'var(--color-text-primary, #17233B)',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
@@ -360,30 +360,22 @@ export const AssetPanel: React.FC = () => {
                     >
                       {getSceneDisplayName(scene)}
                     </div>
-                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-text-secondary, #52627A)' }}>
                       {(scene.durationInFrames / state.project.fps).toFixed(1)}s ({scene.durationInFrames}f)
                     </div>
                   </div>
                 </div>
 
                 {state.project.scenes.length > 1 && (
-                  <button
+                  <IconButton
+                    icon={<Trash2 size={13} />}
+                    label="Xóa scene khỏi timeline"
+                    size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
                       dispatch({ type: 'DELETE_SCENE', sceneId: scene.id });
                     }}
-                    title="Delete scene"
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'var(--text-muted)',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      borderRadius: '4px',
-                    }}
-                  >
-                    <Trash2 size={13} />
-                  </button>
+                  />
                 )}
               </div>
             );
