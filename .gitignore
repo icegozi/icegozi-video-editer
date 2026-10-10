@@ -40,8 +40,15 @@ Thumbs.db
 *.sublime-project
 *.sublime-workspace
 
-# Local AI agent configuration
+# Local AI agent configuration (track only the project-scoped exceptions below)
 .agents/*
+!.agents/rules/
+.agents/rules/*
+!.agents/rules/30-icegozi-video-invariants.md
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/icegozi-video-maintainer/
+!.agents/skills/icegozi-video-maintainer/SKILL.md
 .claude/*
 .agent/*
 
