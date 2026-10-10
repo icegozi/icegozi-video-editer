@@ -11,7 +11,24 @@ export function getDatabasePath(): string {
   if (process.env.ICEGOZI_DB_PATH) {
     return process.env.ICEGOZI_DB_PATH;
   }
+  if (process.env.VITEST || process.env.NODE_ENV === 'test') {
+    return ':memory:';
+  }
   return path.resolve(process.cwd(), 'data', 'icegozi.sqlite');
+}
+
+/**
+ * Closes the active SQLite singleton and resets its reference.
+ */
+export function closeDatabase(): void {
+  if (sqliteInstance) {
+    try {
+      sqliteInstance.close();
+    } catch {
+      // Ignore if already closed
+    }
+    sqliteInstance = null;
+  }
 }
 
 /**

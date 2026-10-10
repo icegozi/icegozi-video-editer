@@ -109,4 +109,75 @@ describe('SQLite Database & Timeline Snapshot Persistence', () => {
       .all();
     expect(remainingSnapshots.length).toBe(0);
   });
+
+  describe('I3: SchemaVersion and metadata roundtrip (T7)', () => {
+    it('preserves domain metadata, tags, and schemaVersion across roundtrip', () => {
+      const richProject: VideoProject = {
+        ...mockProject,
+        id: `rich-proj-${Date.now()}`,
+        title: 'Rich Metadata Project',
+        schemaVersion: 2,
+        metadata: {
+          brand: 'icegozi',
+          author: 'Engineer',
+          tags: ['test', 'review'],
+        },
+        trackSettings: {
+          V1: { locked: false, hidden: true },
+          V2: { locked: true, hidden: false },
+        },
+      };
+
+      ProjectDbService.saveProject(richProject);
+      const loaded = ProjectDbService.getProject(richProject.id);
+
+      expect(loaded).not.toBeNull();
+      expect(loaded?.schemaVersion).toBe(2);
+      expect(loaded?.metadata).toEqual({
+        brand: 'icegozi',
+        author: 'Engineer',
+        tags: ['test', 'review'],
+      });
+      expect(loaded?.trackSettings).toEqual({
+        V1: { locked: false, hidden: true },
+        V2: { locked: true, hidden: false },
+      });
+    });
+
+    it('gracefully loads legacy snapshot lacking schemaVersion and projectMetadata', () => {
+      const legacyProjId = `legacy-${Date.now()}`;
+      // Direct raw insert representing older snapshot format
+      db.insert(projects).values({
+        id: legacyProjId,
+        title: 'Legacy Project',
+        slug: 'legacy-project',
+        width: 1920,
+        height: 1080,
+        fps: 30,
+        durationFrames: 90,
+        currentRevision: 1,
+        lastEditedAt: 1000,
+        createdAt: 1000,
+        updatedAt: 1000,
+      }).run();
+
+      db.insert(projectSnapshots).values({
+        id: `snap-legacy-${Date.now()}`,
+        projectId: legacyProjId,
+        revision: 1,
+        changeSummary: 'Old format',
+        timelineData: {
+          scenes: mockProject.scenes as any,
+        },
+        trackSettings: {},
+        createdAt: 1000,
+      }).run();
+
+      const loaded = ProjectDbService.getProject(legacyProjId);
+      expect(loaded).not.toBeNull();
+      expect(loaded?.schemaVersion).toBe(1); // Defaults to schemaVersion 1
+      expect(loaded?.metadata).toBeDefined(); // Fallback metadata object
+      expect(loaded?.scenes).toHaveLength(mockProject.scenes.length);
+    });
+  });
 });

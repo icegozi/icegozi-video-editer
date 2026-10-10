@@ -4,6 +4,7 @@ import { useEditor } from '../../state/editorStore';
 import { framesToPixels, pixelsToFrames } from '../../geometry/timelineGeometry';
 import { COLOR_TOKENS } from '../../tokens/colors';
 import { SceneConfig } from '../../../domain/video/Scene';
+import { getMinSceneDuration } from '../../../domain/video/sceneDuration';
 
 export interface TimelineClipProps {
   scene: SceneConfig;
@@ -83,7 +84,8 @@ export const TimelineClip: React.FC<TimelineClipProps> = ({
     if (!isTrimmingRight) return;
     const deltaX = e.clientX - trimStartXRef.current;
     const deltaFrames = pixelsToFrames(deltaX, fps, pps);
-    const newDuration = Math.max(15, startDurationRef.current + deltaFrames);
+    const minDuration = getMinSceneDuration(state.project, scene.id);
+    const newDuration = Math.max(minDuration, startDurationRef.current + deltaFrames);
     setTrimPreviewDuration(newDuration);
   };
 

@@ -37,9 +37,10 @@ export function useKeyboardShortcuts() {
       if (isCmdOrCtrl && e.key.toLowerCase() === 's') {
         e.preventDefault();
         dispatch({ type: 'SET_SAVE_STATUS', status: 'saving' });
-        ProjectStorage.saveProject(state.project, state.revision)
+        const savingRevision = state.revision;
+        ProjectStorage.saveProject(state.project, savingRevision)
           .then(() => {
-            dispatch({ type: 'SET_SAVE_STATUS', status: 'saved', savedAt: Date.now() });
+            dispatch({ type: 'SET_SAVE_STATUS', status: 'saved', savedAt: Date.now(), revision: savingRevision });
           })
           .catch((err) => {
             dispatch({

@@ -10,6 +10,7 @@
     "render": "tsx scripts/render-preview.ts --profile final",
     "render:preview": "tsx scripts/render-preview.ts --profile preview",
     "render:direct": "remotion render src/index.ts MainVideo output/main_video.mp4",
+    "studio": "remotion preview src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run && npm run test:siwc",
     "test:siwc": "node --import tsx --test tests/siwc-devkit/*.check.mjs",

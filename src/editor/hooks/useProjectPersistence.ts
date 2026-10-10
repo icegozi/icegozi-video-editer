@@ -43,7 +43,7 @@ export function useProjectPersistence() {
 
       try {
         await ProjectStorage.saveProject(state.project, savingRevision);
-        dispatch({ type: 'SET_SAVE_STATUS', status: 'saved', savedAt: Date.now() });
+        dispatch({ type: 'SET_SAVE_STATUS', status: 'saved', savedAt: Date.now(), revision: savingRevision });
       } catch (err) {
         dispatch({
           type: 'SET_SAVE_STATUS',
@@ -67,7 +67,7 @@ export function useProjectPersistence() {
 
     try {
       await ProjectStorage.saveProject(state.project, savingRevision);
-      dispatch({ type: 'SET_SAVE_STATUS', status: 'saved', savedAt: Date.now() });
+      dispatch({ type: 'SET_SAVE_STATUS', status: 'saved', savedAt: Date.now(), revision: savingRevision });
     } catch (err) {
       dispatch({
         type: 'SET_SAVE_STATUS',

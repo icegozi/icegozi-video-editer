@@ -93,7 +93,7 @@ export const AssetPanel: React.FC = () => {
       const response = await fetch('/api/assets/upload', {
         method: 'POST',
         headers: {
-          'x-file-name': file.name,
+          'x-file-name': encodeURIComponent(file.name),
         },
         body: file,
       });
@@ -105,7 +105,7 @@ export const AssetPanel: React.FC = () => {
 
       const assetUrl = data.url;
 
-      if (file.type.startsWith('image/')) {
+      if (file.type.startsWith('image/') || data.mediaType === 'image') {
         const imageScene: SceneConfig = {
           id: generateId('scene-image'),
           type: 'image',
@@ -114,7 +114,7 @@ export const AssetPanel: React.FC = () => {
           objectFit: 'cover',
         };
         dispatch({ type: 'ADD_SCENE', scene: imageScene });
-      } else if (file.type.startsWith('audio/')) {
+      } else if (file.type.startsWith('audio/') || data.mediaType === 'audio') {
         dispatch({
           type: 'ADD_AUDIO_TRACK',
           track: {

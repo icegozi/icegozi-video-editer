@@ -19,7 +19,7 @@ Designed for high-precision motion graphics, mathematical formulas, text overlay
 ### Local editor with ChatGPT/Codex assistant
 
 On Windows with Node 24, run `npm ci` then `npm run dev` and open
-**http://127.0.0.1:3200**. Click **Trợ lý AI** → **Continue with ChatGPT**.
+**http://127.0.0.1:3200**. Navigate to **AI Studio** tab → click **Đăng nhập**.
 The local SIWC integration uses each user's own account and plan permission.
 See [setup, licensing, security limits and verification](ASSISTANT_INTEGRATION.md).
 The pinned runtime is Codex 0.160.1; static `dist` alone has no Node bridge.
@@ -144,16 +144,16 @@ Adding scene types is fully decoupled:
 3. Create the React component in `src/video/scenes/implementations/`.
 4. Register with `SceneRegistry.register('my-type', MySceneComponent)` in `src/app/registerCompositions.ts`.
 
-See [docs/ADDING_A_SCENE.md](docs/ADDING_A_SCENE.md) for a complete walkthrough.
+See [docs/infrastructure/ADDING_A_SCENE.md](docs/infrastructure/ADDING_A_SCENE.md) for a complete walkthrough.
 
 ---
 
 ## Documentation
 
-- 📐 [Architecture Specification](docs/ARCHITECTURE.md)
-- 🎬 [Editing & AI Workflow Guide](docs/WORKFLOW.md)
-- 🧩 [Adding a Scene Tutorial](docs/ADDING_A_SCENE.md)
-- 🎞️ [Technical Media Specifications](docs/MEDIA_GUIDE.md)
+- 📐 [Architecture Specification](docs/infrastructure/ARCHITECTURE.md)
+- 🎬 [Editing & AI Workflow Guide](docs/infrastructure/WORKFLOW.md)
+- 🧩 [Adding a Scene Tutorial](docs/infrastructure/ADDING_A_SCENE.md)
+- 🎞️ [Technical Media Specifications](docs/infrastructure/MEDIA_GUIDE.md)
 
 ---
 

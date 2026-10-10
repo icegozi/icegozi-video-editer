@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { ProjectStorage } from '../../src/infrastructure/storage/ProjectStorage';
 import { mockProject } from '../fixtures/mock-project';
 import { VideoProject } from '../../src/domain/video/VideoProject';
+import { editorReducer } from '../../src/editor/state/editorStore';
 
 describe('Project Persistence & Recovery (Finding C2)', () => {
   beforeEach(async () => {
@@ -60,5 +61,38 @@ describe('Project Persistence & Recovery (Finding C2)', () => {
 
     const loaded = await ProjectStorage.loadCurrentProject();
     expect(loaded).toBeNull();
+  });
+
+  describe('I2: Import, Autosave, and Restore Invariants (T6)', () => {
+    it('sets saveStatus to dirty on import JSON and saved on initial restore', () => {
+      const importedProject: VideoProject = {
+        ...mockProject,
+        id: 'imported-project',
+        title: 'Imported Project',
+      };
+
+      const initialState = {
+        project: mockProject,
+        revision: 1,
+        saveStatus: 'saved' as const,
+      };
+
+      // 1. Importing JSON dispatches LOAD_PROJECT without revision -> MUST BE 'dirty' so autosave triggers!
+      const importedState = editorReducer(initialState as any, {
+        type: 'LOAD_PROJECT',
+        project: importedProject,
+      });
+      expect(importedState.saveStatus).toBe('dirty');
+      expect(importedState.project.id).toBe('imported-project');
+
+      // 2. Restoring from persistence dispatches LOAD_PROJECT WITH revision -> MUST BE 'saved'!
+      const restoredState = editorReducer(initialState as any, {
+        type: 'LOAD_PROJECT',
+        project: importedProject,
+        revision: 5,
+      });
+      expect(restoredState.saveStatus).toBe('saved');
+      expect(restoredState.revision).toBe(5);
+    });
   });
 });

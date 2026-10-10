@@ -7,6 +7,7 @@ import { TimelineTrack } from './TimelineTrack';
 import { TimelineClip } from './TimelineClip';
 import { TimelinePlayhead } from './TimelinePlayhead';
 import { framesToPixels } from '../../geometry/timelineGeometry';
+import { getSceneTrackId } from '../../../domain/video/trackUtils';
 
 export const Timeline: React.FC = () => {
   const { state, dispatch } = useEditor();
@@ -19,16 +20,13 @@ export const Timeline: React.FC = () => {
   // Calculate width with a generous buffer at the end
   const totalWidthPx = Math.max(1200, framesToPixels(totalFrames, fps, pps) + 300);
 
-  // Divide scenes into V2 (Text & Formula overlays) and V1 (Primary video, images, or base scenes)
-  const v2Scenes = state.timeline.computedScenes.filter(
-    (cs) => cs.scene.type === 'text' || cs.scene.type === 'formula'
+  // Divide scenes into V2 and V1 using unified track assignment helper
+  const overlayScenes = state.timeline.computedScenes.filter(
+    (cs) => getSceneTrackId(cs.scene, state.project.scenes) === 'V2'
   );
-  const v1Scenes = state.timeline.computedScenes.filter(
-    (cs) => cs.scene.type !== 'text' && cs.scene.type !== 'formula'
+  const primaryScenes = state.timeline.computedScenes.filter(
+    (cs) => getSceneTrackId(cs.scene, state.project.scenes) === 'V1'
   );
-
-  const primaryScenes = v1Scenes.length > 0 ? v1Scenes : state.timeline.computedScenes;
-  const overlayScenes = v1Scenes.length > 0 ? v2Scenes : [];
 
   const audioTracks = state.project.audioTracks ?? [];
   const tracksCount = 2 + Math.max(1, audioTracks.length);

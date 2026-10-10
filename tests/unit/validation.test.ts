@@ -55,5 +55,24 @@ describe('Project Schema Validation', () => {
       expect(parseResult.error.issues.some((issue) => issue.message.includes('Duplicate audio track ID'))).toBe(true);
     }
   });
+
+  it('fails validation when ID is duplicated across scene, audio, and subtitle collections (Finding I9 / T13)', () => {
+    const crossDuplicateProject = {
+      ...mockProject,
+      scenes: [
+        { ...mockProject.scenes[0], id: 'shared-id-1' },
+      ],
+      audioTracks: [
+        { id: 'shared-id-1', type: 'voice' as const, src: 'voice.mp3', startFrame: 0, volume: 1 },
+      ],
+    };
+    const parseResult = VideoProjectSchema.safeParse(crossDuplicateProject);
+    expect(parseResult.success).toBe(false);
+    if (!parseResult.success) {
+      expect(parseResult.error.issues.some((issue) =>
+        issue.message.includes('already used by scenes') || issue.message.includes('unique across the project')
+      )).toBe(true);
+    }
+  });
 });
 

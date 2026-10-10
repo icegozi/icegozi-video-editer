@@ -62,10 +62,15 @@ export const AiChatPanel: React.FC = () => {
     assistant.conversation?.status,
   ]);
 
-  const handleSendPrompt = (text: string) => {
-    if (!text.trim()) return;
-    setPromptText('');
-    void assistant.send(text.trim());
+  const handleSendPrompt = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    try {
+      await assistant.send(trimmed);
+      setPromptText((current) => (current === text || current === trimmed ? '' : current));
+    } catch {
+      // Preserve prompt draft on send error or network rejection
+    }
   };
 
   const handleTemplateClick = (templatePrompt: string) => {
@@ -290,6 +295,51 @@ export const AiChatPanel: React.FC = () => {
             )}
           </div>
         </div>
+
+        {auth?.profileId && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              marginTop: '6px',
+            }}
+          >
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={assistant.busy || connecting}
+              onClick={() => void assistant.login(true)}
+            >
+              Thêm tài khoản
+            </Button>
+            {assistant.status?.profiles && assistant.status.profiles.length > 0 && (
+              <select
+                aria-label="Tài khoản ChatGPT"
+                value={auth.profileId}
+                disabled={assistant.busy || connecting}
+                onChange={(event) => void assistant.selectProfile(event.target.value)}
+                style={{
+                  flex: 1,
+                  height: '24px',
+                  fontSize: '11px',
+                  padding: '0 6px',
+                  borderRadius: '4px',
+                  border: '1px solid var(--color-border-default, #CBD5E1)',
+                  backgroundColor: 'var(--color-surface, #FFFFFF)',
+                  color: 'var(--color-text-primary, #0F172A)',
+                  outline: 'none',
+                }}
+              >
+                {assistant.status.profiles.map((profile) => (
+                  <option key={profile.id} value={profile.id} disabled={profile.pending}>
+                    {profile.label}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
 
         {/* Model Selector Bar (When Connected) */}
         {isConnected && auth?.sharing && (

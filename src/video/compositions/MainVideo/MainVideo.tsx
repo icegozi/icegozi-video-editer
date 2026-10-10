@@ -5,6 +5,7 @@ import { buildTimeline } from '../../../application/timeline/buildTimeline';
 import { SceneRenderer } from '../../scenes/SceneRenderer';
 import { SubtitleLayer } from '../../components/SubtitleLayer/SubtitleLayer';
 import { AudioLayer } from '../../components/AudioLayer/AudioLayer';
+import { getSceneTrackId } from '../../../domain/video/trackUtils';
 
 /**
  * Main composition orchestrator.
@@ -13,7 +14,16 @@ import { AudioLayer } from '../../components/AudioLayer/AudioLayer';
  */
 export const MainVideo: React.FC<MainVideoProps> = ({ project = defaultMainVideoProps.project! }) => {
   const timeline = useMemo(() => buildTimeline(project), [project]);
-  const isVisualHidden = Boolean(project.trackSettings?.['V1']?.hidden);
+
+  // Filter scenes per visual track (V1 and V2) based on trackSettings hidden state
+  const visibleScenes = useMemo(() => {
+    return timeline.computedScenes.filter((computed) => {
+      const trackId = getSceneTrackId(computed.scene, project.scenes);
+      return !project.trackSettings?.[trackId]?.hidden;
+    });
+  }, [timeline.computedScenes, project.scenes, project.trackSettings]);
+
+  const isSubtitlesHidden = Boolean(project.trackSettings?.subtitles?.hidden);
 
   return (
     <AbsoluteFill
@@ -22,20 +32,19 @@ export const MainVideo: React.FC<MainVideoProps> = ({ project = defaultMainVideo
       }}
     >
       {/* Visual Scene Sequence */}
-      {!isVisualHidden &&
-        timeline.computedScenes.map((computed) => (
-          <Sequence
-            key={computed.scene.id}
-            from={computed.startFrame}
-            durationInFrames={computed.durationInFrames}
-            name={computed.scene.id}
-          >
-            <SceneRenderer computed={computed} />
-          </Sequence>
-        ))}
+      {visibleScenes.map((computed) => (
+        <Sequence
+          key={computed.scene.id}
+          from={computed.startFrame}
+          durationInFrames={computed.durationInFrames}
+          name={computed.scene.id}
+        >
+          <SceneRenderer computed={computed} />
+        </Sequence>
+      ))}
 
       {/* Subtitle Layer */}
-      {project.subtitles && project.subtitles.length > 0 && (
+      {project.subtitles && project.subtitles.length > 0 && !isSubtitlesHidden && (
         <SubtitleLayer captions={project.subtitles} />
       )}
 
@@ -51,4 +60,3 @@ export const MainVideo: React.FC<MainVideoProps> = ({ project = defaultMainVideo
     </AbsoluteFill>
   );
 };
-

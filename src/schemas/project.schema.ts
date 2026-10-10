@@ -45,46 +45,35 @@ export const VideoProjectSchema = z.object({
   trackSettings: z.record(z.string(), TrackSettingSchema).optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 }).superRefine((project, context) => {
-  // Validate scene IDs uniqueness
-  const sceneIds = new Set<string>();
-  project.scenes.forEach((scene, index) => {
-    if (sceneIds.has(scene.id)) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['scenes', index, 'id'],
-        message: `Duplicate scene ID found: "${scene.id}". IDs must be unique across scenes.`,
-      });
-    }
-    sceneIds.add(scene.id);
-  });
+  const owners = new Map<string, string>();
+  const collections = [
+    ['scenes', project.scenes],
+    ['audioTracks', project.audioTracks ?? []],
+    ['subtitles', project.subtitles ?? []],
+  ] as const;
 
-  // Validate audio track IDs uniqueness
-  if (project.audioTracks) {
-    const audioIds = new Set<string>();
-    project.audioTracks.forEach((track, index) => {
-      if (audioIds.has(track.id)) {
+  for (const [collection, entries] of collections) {
+    entries.forEach((entry, index) => {
+      const owner = owners.get(entry.id);
+      if (owner) {
+        let message = `ID "${entry.id}" is already used by ${owner}. IDs must be unique across the project.`;
+        if (owner === collection) {
+          if (owner === 'scenes') {
+            message = `Duplicate scene ID "${entry.id}". Scene IDs must be unique.`;
+          } else if (owner === 'audioTracks') {
+            message = `Duplicate audio track ID "${entry.id}". Audio track IDs must be unique.`;
+          } else {
+            message = `Duplicate subtitle ID "${entry.id}". Subtitle IDs must be unique.`;
+          }
+        }
         context.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ['audioTracks', index, 'id'],
-          message: `Duplicate audio track ID found: "${track.id}". IDs must be unique.`,
+          path: [collection, index, 'id'],
+          message,
         });
+      } else {
+        owners.set(entry.id, collection);
       }
-      audioIds.add(track.id);
-    });
-  }
-
-  // Validate subtitle IDs uniqueness
-  if (project.subtitles) {
-    const subtitleIds = new Set<string>();
-    project.subtitles.forEach((cue, index) => {
-      if (subtitleIds.has(cue.id)) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['subtitles', index, 'id'],
-          message: `Duplicate subtitle ID found: "${cue.id}". IDs must be unique.`,
-        });
-      }
-      subtitleIds.add(cue.id);
     });
   }
 });

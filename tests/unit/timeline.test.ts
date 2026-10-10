@@ -107,6 +107,53 @@ describe('Timeline Engine', () => {
 
       expect(() => validateTimeline(nanTimeline as any)).toThrow(InvalidTimelineError);
     });
+    it('rejects crossfade longer than subsequent scene (Finding I5 / T9)', () => {
+      const invalidProject = {
+        ...mockProject,
+        scenes: [
+          {
+            ...mockProject.scenes[0],
+            id: 'scene-a',
+            durationInFrames: 100,
+            transition: { type: 'crossfade' as const, durationInFrames: 80 },
+          },
+          {
+            ...mockProject.scenes[1],
+            id: 'scene-b',
+            durationInFrames: 30,
+          },
+        ],
+      };
+
+      expect(() => buildTimeline(invalidProject)).toThrow(InvalidTimelineError);
+    });
+
+    it('rejects combined incoming + outgoing crossfade exceeding scene duration (Finding I5 / T9)', () => {
+      const invalidMiddleProject = {
+        ...mockProject,
+        scenes: [
+          {
+            ...mockProject.scenes[0],
+            id: 'scene-1',
+            durationInFrames: 120,
+            transition: { type: 'crossfade' as const, durationInFrames: 60 },
+          },
+          {
+            ...mockProject.scenes[1],
+            id: 'scene-2',
+            durationInFrames: 100, // 60 incoming + 60 outgoing = 120 > 100!
+            transition: { type: 'crossfade' as const, durationInFrames: 60 },
+          },
+          {
+            ...mockProject.scenes[2],
+            id: 'scene-3',
+            durationInFrames: 120,
+          },
+        ],
+      };
+
+      expect(() => buildTimeline(invalidMiddleProject)).toThrow(InvalidTimelineError);
+    });
   });
 });
 

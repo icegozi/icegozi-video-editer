@@ -1,6 +1,8 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export interface TimelineData {
+  schemaVersion?: number;
+  projectMetadata?: Record<string, unknown>;
   scenes: Array<Record<string, unknown>>;
   audioTracks?: Array<Record<string, unknown>>;
   subtitles?: Array<Record<string, unknown>>;

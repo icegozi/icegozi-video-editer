@@ -3,6 +3,7 @@ import { useEditor } from '../../state/editorStore';
 import { FormulaSceneConfig } from '../../../domain/video/Scene';
 import { Input } from '../ui/Input';
 import { Slider } from '../ui/Slider';
+import { getMinSceneDuration } from '../../../domain/video/sceneDuration';
 
 export interface FormulaInspectorProps {
   scene: FormulaSceneConfig;
@@ -116,11 +117,14 @@ export const FormulaInspector: React.FC<FormulaInspectorProps> = ({ scene }) => 
           </span>
         </div>
         <Slider
-          min={15}
+          min={getMinSceneDuration(state.project, scene.id)}
           max={300}
           step={5}
           value={scene.durationInFrames}
-          onChange={(val) => update({ durationInFrames: Math.round(val) })}
+          onChange={(val) => {
+            const minDur = getMinSceneDuration(state.project, scene.id);
+            update({ durationInFrames: Math.max(minDur, Math.round(val)) });
+          }}
         />
       </div>
 

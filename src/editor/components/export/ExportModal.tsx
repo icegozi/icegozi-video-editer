@@ -15,10 +15,12 @@ export const ExportModal: React.FC = () => {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [outputPath, setOutputPath] = useState<string | null>(null);
   const activeJobIdRef = useRef<string | null>(null);
+  const renderGenerationRef = useRef(0);
   const pollTimerRef = useRef<any>(null);
 
   useEffect(() => {
     return () => {
+      renderGenerationRef.current++;
       if (pollTimerRef.current) {
         clearInterval(pollTimerRef.current);
       }
@@ -40,6 +42,10 @@ export const ExportModal: React.FC = () => {
   };
 
   const startRender = async () => {
+    const generation = ++renderGenerationRef.current;
+    activeJobIdRef.current = null;
+    if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+
     setRenderStatus('rendering');
     setProgress(5);
     setErrorMessage(null);
@@ -62,6 +68,10 @@ export const ExportModal: React.FC = () => {
       }
 
       const jobId = data.job.id;
+      if (generation !== renderGenerationRef.current) {
+        await fetch(`/api/render/cancel/${jobId}`, { method: 'POST' }).catch(() => {});
+        return;
+      }
       activeJobIdRef.current = jobId;
 
       // Start polling status
@@ -69,6 +79,7 @@ export const ExportModal: React.FC = () => {
         try {
           const res = await fetch(`/api/render/status/${jobId}`);
           const statusData = await res.json();
+          if (generation !== renderGenerationRef.current) return;
           if (!res.ok || !statusData.success) return;
 
           const job = statusData.job;
@@ -93,24 +104,29 @@ export const ExportModal: React.FC = () => {
         }
       }, 1000);
     } catch (err) {
+      if (generation !== renderGenerationRef.current) return;
       setRenderStatus('error');
       setErrorMessage(err instanceof Error ? err.message : String(err));
     }
   };
 
   const cancelRender = async () => {
-    if (activeJobIdRef.current) {
+    const generation = ++renderGenerationRef.current;
+    if (pollTimerRef.current) {
+      clearInterval(pollTimerRef.current);
+    }
+    const currentJobId = activeJobIdRef.current;
+    activeJobIdRef.current = null;
+    setRenderStatus('idle');
+    setProgress(0);
+
+    if (currentJobId) {
       try {
-        await fetch(`/api/render/cancel/${activeJobIdRef.current}`, { method: 'POST' });
+        await fetch(`/api/render/cancel/${currentJobId}`, { method: 'POST' });
       } catch {
         // Ignore
       }
     }
-    if (pollTimerRef.current) {
-      clearInterval(pollTimerRef.current);
-    }
-    setRenderStatus('idle');
-    setProgress(0);
   };
 
   return (

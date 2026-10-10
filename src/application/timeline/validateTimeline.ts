@@ -43,6 +43,44 @@ export function validateTimeline(timeline: ProjectTimeline): void {
       );
     }
 
+    if (item.endFrame > timeline.totalDurationInFrames) {
+      throw new InvalidTimelineError(
+        `Scene "${item.scene.id}" end frame (${item.endFrame}) exceeds timeline total duration (${timeline.totalDurationInFrames}).`,
+        { sceneId: item.scene.id }
+      );
+    }
+
+    const incoming =
+      item.incomingTransition?.type === 'crossfade'
+        ? item.incomingTransition.durationInFrames
+        : 0;
+
+    const outgoing =
+      i < timeline.computedScenes.length - 1 && item.outgoingTransition?.type === 'crossfade'
+        ? item.outgoingTransition.durationInFrames
+        : 0;
+
+    if (incoming >= item.durationInFrames) {
+      throw new InvalidTimelineError(
+        `Scene "${item.scene.id}" incoming crossfade duration (${incoming}) must be strictly less than scene duration (${item.durationInFrames}).`,
+        { sceneId: item.scene.id }
+      );
+    }
+
+    if (outgoing >= item.durationInFrames) {
+      throw new InvalidTimelineError(
+        `Scene "${item.scene.id}" outgoing crossfade duration (${outgoing}) must be strictly less than scene duration (${item.durationInFrames}).`,
+        { sceneId: item.scene.id }
+      );
+    }
+
+    if (incoming + outgoing > item.durationInFrames) {
+      throw new InvalidTimelineError(
+        `Scene "${item.scene.id}" combined incoming (${incoming}) and outgoing (${outgoing}) crossfade overlap (${incoming + outgoing}) cannot exceed scene duration (${item.durationInFrames}).`,
+        { sceneId: item.scene.id }
+      );
+    }
+
     if (item.scene.transition) {
       const transDuration = item.scene.transition.durationInFrames;
       if (!Number.isFinite(transDuration) || transDuration <= 0) {
@@ -54,6 +92,15 @@ export function validateTimeline(timeline: ProjectTimeline): void {
         throw new InvalidTimelineError(
           `Scene "${item.scene.id}" transition duration (${transDuration}) must be strictly less than scene duration (${item.durationInFrames})`
         );
+      }
+
+      if (item.scene.transition.type === 'crossfade' && i < timeline.computedScenes.length - 1) {
+        const nextScene = timeline.computedScenes[i + 1];
+        if (transDuration >= nextScene.durationInFrames) {
+          throw new InvalidTimelineError(
+            `Crossfade duration (${transDuration}) for scene "${item.scene.id}" must be strictly less than next scene "${nextScene.scene.id}" duration (${nextScene.durationInFrames}).`
+          );
+        }
       }
     }
   }

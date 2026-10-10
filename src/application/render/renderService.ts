@@ -39,22 +39,20 @@ class RenderService {
   }
 
   createJob(rawProject: unknown, profileName: RenderProfile = RenderProfile.Preview): RenderJob {
+    if (profileName !== RenderProfile.Preview && profileName !== RenderProfile.Final) {
+      throw new Error(`Invalid render profile "${String(profileName)}". Expected preview or final.`);
+    }
+
     ensureDirectories();
 
     // Validate project schema and make an immutable clone
     const project = migrateProject(rawProject);
     const validated = VideoProjectSchema.parse(project) as VideoProject;
 
-    // Persist project and get snapshot record in SQLite
-    const { revision } = ProjectDbService.saveProject(validated);
-    const snapshotRecord = db
-      .select()
-      .from(projectSnapshots)
-      .where(eq(projectSnapshots.projectId, validated.id))
-      .orderBy(desc(projectSnapshots.revision))
-      .limit(1)
-      .get();
-    const snapshotId = snapshotRecord?.id || generateId('snap');
+    // Create immutable render snapshot without bumping active edited revision
+    const { snapshotId } = ProjectDbService.createRenderSnapshot(validated, {
+      changeSummary: `Render ${profileName} snapshot`,
+    });
 
     const jobId = generateId('job').slice(0, 16);
     const targetDir = profileName === RenderProfile.Preview ? PATHS.previews : PATHS.output;
@@ -94,12 +92,27 @@ class RenderService {
 
     this.activeJobs.set(jobId, job);
 
-    // Save snapshot of current project for rendering
     const snapshotPath = path.resolve(PATHS.temp, `snapshot_${jobId}.json`);
-    fs.writeFileSync(snapshotPath, JSON.stringify({ project: validated }, null, 2));
+    try {
+      // Save snapshot of current project for rendering
+      fs.writeFileSync(snapshotPath, JSON.stringify({ project: validated }, null, 2));
 
-    // Start background render execution
-    this.executeJob(job, snapshotPath);
+      // Start background render execution
+      this.executeJob(job, snapshotPath);
+    } catch (err) {
+      job.status = 'failed';
+      job.completedAt = Date.now();
+      job.error = err instanceof Error ? err.message : String(err);
+      this.updateDbJob(jobId, {
+        status: 'failed',
+        completedAt: job.completedAt,
+        errorMessage: job.error,
+      });
+      if (fs.existsSync(snapshotPath)) {
+        try { fs.unlinkSync(snapshotPath); } catch {}
+      }
+      throw err;
+    }
 
     return job;
   }

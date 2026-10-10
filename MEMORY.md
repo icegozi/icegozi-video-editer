@@ -11,13 +11,26 @@
 
 ## Persistence & Storage Rules
 
-- `ProjectStorage` (`src/infrastructure/storage/ProjectStorage.ts`) persists projects in browser `localStorage` with Zod schema validation and monotonically increasing revision counters to guard against out-of-order writes.
-- `useProjectPersistence` provides 800ms debounced autosave, manual save, reset to demo, and JSON export/import.
-- Video scene split offset calculation: `secondHalf.startFromFrame = firstHalf.startFromFrame + Math.round(offsetInScene * playbackRate)`.
+- `ProjectStorage` (`src/infrastructure/storage/ProjectStorage.ts`) persists projects in browser `localStorage` with Zod schema validation and monotonically increasing revision counters.
+- Distinguishes same-tab out-of-order writes (gracefully ignored, retaining newer revision) from multi-tab conflicts (rejected when external storage advanced beyond tab's known revision).
+- Server persistence (`src/infrastructure/db/projectDbService.ts`) implements Compare-And-Swap (CAS) via `expectedServerRevision` and idempotent saves (same content returns existing revision without counter bumps).
+- `createRenderSnapshot` captures immutable timeline state without incrementing the edited project's `currentRevision` counter and reuses existing snapshot records to satisfy revision uniqueness.
+- Full domain metadata (`schemaVersion`, `metadata`, `trackSettings`) roundtrips through SQLite snapshot tables.
+- `useProjectPersistence` provides 800ms debounced autosave, manual save, reset to demo, and JSON export/import. Importing JSON marks workspace dirty for autosave; restoring persistence marks saved.
+- Video scene split offset calculation: `secondHalf.startFromFrame = firstHalf.startFromFrame + Math.round(offsetInScene * playbackRate)`. Split keeps outgoing transition only on second half.
+
+## Timeline & Track Semantics
+
+- Dynamic minimum scene duration (`getMinSceneDuration(project, sceneId)`) strictly respects adjacent incoming and outgoing transition durations (`incoming + outgoing <= durationInFrames`).
+- Unified track assignment helper (`getSceneTrackId`): text/formula belongs to V2 when primary media exists; falls back to V1 when only text/formula is present.
+- Track settings (hidden, muted, locked) apply independently: V2 hidden does not affect V1; locked tracks are strictly enforced in editor reducer and proposal validators before state mutations.
+- Cross-collection ID uniqueness enforced across scenes, audio tracks, and subtitles with descriptive error paths.
 
 ## Filesystem & Media Safety
 
 - Source media in `public/assets` is strictly immutable.
+- Uploads (`/api/assets/upload`) stream directly to exclusive temporary files (`.upload_${UUID}.tmp`, 256 MiB limit). Validates file magic bytes against extension, resolves storage key via UUID, and atomically promotes to storage. Original filenames are preserved purely as display metadata.
+- JSON endpoints (`/api/projects`, `/api/render`) enforce a 1 MiB payload limit and concatenate raw Buffer chunks before UTF-8 decoding to preserve multi-byte Unicode strings (e.g. Vietnamese).
 - `FileSystem.cleanDirectory` enforces a strict allowlist (`normalized`, `frames`, `previews`, `temp`) and verifies `fs.realpathSync` path containment to prevent symlink/junction escapes. Root, public, and output folders are protected.
 - Intermediate media normalization fingerprints via SHA-256 (source path, file size, mtime, target width/height/fps) with atomic promotion (`fs.renameSync`) and in-flight request deduplication.
 - File uploads and assets are resolved without double `assets/` prefix via `resolveAssetPath`.
@@ -25,6 +38,9 @@
 ## Render Service Architecture
 
 - `renderApiPlugin` runs inside Vite dev server (`vite.config.ts`), exposing `/api/render`, `/api/render/status/:jobId`, `/api/render/cancel/:jobId`, `/api/render/download/:jobId`, and `/api/assets/upload`.
+- Render profiles are strictly validated against enum values before any side effects (DB, snapshots, process spawn).
+- ExportModal tracks client generation IDs (`renderGenerationRef`) to cancel in-flight jobs even if the server response has not arrived yet, and prevents stale polling loops from polluting new jobs.
+- Render cancellation on Windows terminates child process trees cleanly and cleans up owned temporary props files.
 - Jobs render headlessly via Remotion CLI (`src/index.ts MainVideo`) using props snapshot files in `generated/temp`.
 - On Windows, child process spawning of `.cmd` files requires `shell: true` and strict quoting of arguments containing path spaces.
 

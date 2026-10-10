@@ -117,9 +117,15 @@ export function useAssistant() {
   const run = useCallback(async (operation: () => Promise<void>) => {
     if (busyRef.current) return;
     busyRef.current = true; setBusy(true); setError(null);
-    try { await operation(); }
-    catch (err) { setError(err instanceof Error ? err.message : 'Không thể hoàn tất.'); }
-    finally { busyRef.current = false; setBusy(false); }
+    try {
+      await operation();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Không thể hoàn tất.';
+      setError(message);
+      throw err;
+    } finally {
+      busyRef.current = false; setBusy(false);
+    }
   }, []);
   const owner = () => {
     if (!conversation) throw new Error('Chưa có hội thoại.');

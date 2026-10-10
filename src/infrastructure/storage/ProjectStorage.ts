@@ -25,6 +25,7 @@ export interface ProjectMetadataEntry {
 export class ProjectStorage {
   private static memoryStore = new Map<string, string>();
   private static lastSavedRevision = 0;
+  private static lastServerRevision = 0;
 
   private static getStorage(): Storage | null {
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -74,7 +75,7 @@ export class ProjectStorage {
 
   /**
    * Persists a project snapshot. Validates schema before saving.
-   * Protects against stale out-of-order writes using the revision number.
+   * Protects against stale out-of-order writes and multi-tab overwrite using the revision number.
    */
   static async saveProject(
     project: VideoProject,
@@ -84,9 +85,21 @@ export class ProjectStorage {
     const validated = VideoProjectSchema.parse(project) as VideoProject;
     const now = Date.now();
 
-    // Check revision to prevent older async save from overwriting a newer state
+    // Check in-memory revision to prevent older async save from same tab overwriting a newer state
     if (revision < this.lastSavedRevision) {
       return { revision: this.lastSavedRevision, savedAt: now };
+    }
+
+    // Check localStorage revision to prevent overwriting newer work saved by another tab
+    const storedRevStr = this.getItem(STORAGE_KEY_CURRENT_REVISION);
+    if (storedRevStr) {
+      const storedRev = parseInt(storedRevStr, 10);
+      if (Number.isFinite(storedRev) && storedRev > this.lastSavedRevision && revision < storedRev) {
+        this.lastSavedRevision = Math.max(this.lastSavedRevision, storedRev);
+        throw new Error(
+          `Stale write conflict: Storage already contains newer revision ${storedRev} (attempted to save revision ${revision}).`
+        );
+      }
     }
 
     const record: PersistedProjectRecord = {
@@ -106,19 +119,38 @@ export class ProjectStorage {
     // Asynchronously sync to backend SQLite database if in browser environment
     if (typeof window !== 'undefined' && typeof fetch !== 'undefined') {
       try {
-        fetch('/api/projects', {
+        const response = await fetch('/api/projects', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             project: validated,
             revision,
+            expectedRevision: this.lastServerRevision > 0 ? this.lastServerRevision : undefined,
             changeSummary: `Revision ${revision}`,
           }),
-        }).catch(() => {
-          // Offline fallback
         });
-      } catch {
-        // Offline fallback
+
+        if (!response.ok) {
+          const errorData = (await response.json().catch(() => ({}))) as { error?: string };
+          throw new Error(
+            errorData.error || `Project saved locally; SQLite sync failed (HTTP ${response.status}).`
+          );
+        }
+
+        const syncResult = (await response.json().catch(() => ({}))) as { revision?: number };
+        if (syncResult && typeof syncResult.revision === 'number') {
+          this.lastServerRevision = syncResult.revision;
+        }
+      } catch (err) {
+        if (err instanceof Error && (err.message.includes('SQLite sync failed') || err.message.includes('Stale revision conflict'))) {
+          throw err;
+        }
+        // If offline (navigator.onLine === false), allow local save without breaking editor
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          console.warn('Offline mode: project persisted locally in browser.');
+        } else {
+          throw err;
+        }
       }
     }
 
@@ -165,6 +197,15 @@ export class ProjectStorage {
     this.removeItem(STORAGE_KEY_CURRENT_PROJECT);
     this.removeItem(STORAGE_KEY_CURRENT_REVISION);
     this.lastSavedRevision = 0;
+    this.lastServerRevision = 0;
+  }
+
+  /**
+   * For testing multi-tab scenarios: updates the shared storage revision
+   * without updating this tab's in-memory lastSavedRevision.
+   */
+  static simulateExternalStorageRevision(revision: number): void {
+    this.setItem(STORAGE_KEY_CURRENT_REVISION, String(revision));
   }
 
   /**

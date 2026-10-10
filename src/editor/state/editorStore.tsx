@@ -6,7 +6,7 @@ import { ProjectTimeline } from '../../domain/video/Timeline';
 import { buildTimeline } from '../../application/timeline/buildTimeline';
 import { demoProject } from '../../../projects/demo/project';
 import { generateId } from '../../shared/utils/id';
-import { validateProposal } from '../../application/assistant/projectProposals';
+import { validateProposal, validateLockedContent } from '../../application/assistant/projectProposals';
 import type { ProjectProposal } from '../../shared/types/assistant';
 
 export type PersistenceStatus = 'saved' | 'dirty' | 'saving' | 'error';
@@ -26,6 +26,7 @@ export interface EditorState {
   saveStatus: PersistenceStatus;
   lastSavedAt: number | null;
   saveError: string | null;
+  editError: string | null;
   historyPast: VideoProject[];
   historyFuture: VideoProject[];
   assistantEpoch: string | null;
@@ -55,6 +56,7 @@ export type EditorAction =
   | { type: 'SET_ACTIVE_TOOL'; tool: 'select' | 'split' }
   | { type: 'TOGGLE_SAFE_AREAS' }
   | { type: 'SET_EXPORT_MODAL'; open: boolean }
+  | { type: 'CLEAR_EDIT_ERROR' }
   | { type: 'ADD_SCENE'; scene: SceneConfig }
   | { type: 'UPDATE_SCENE'; sceneId: string; updates: Partial<SceneConfig> }
   | { type: 'DELETE_SCENE'; sceneId: string }
@@ -68,7 +70,7 @@ export type EditorAction =
   | { type: 'UPDATE_PROJECT_METADATA'; updates: Partial<VideoProject> }
   | { type: 'LOAD_PROJECT'; project: VideoProject; revision?: number }
   | { type: 'RESET_PROJECT'; project?: VideoProject }
-  | { type: 'SET_SAVE_STATUS'; status: PersistenceStatus; error?: string; savedAt?: number }
+  | { type: 'SET_SAVE_STATUS'; status: PersistenceStatus; error?: string; savedAt?: number; revision?: number }
   | { type: 'UNDO' }
   | { type: 'REDO' };
 
@@ -115,6 +117,7 @@ export function createInitialState(initialProject: VideoProject = demoProject): 
     saveStatus: 'saved',
     lastSavedAt: Date.now(),
     saveError: null,
+    editError: null,
     historyPast: [],
     historyFuture: [],
     assistantEpoch: null,
@@ -128,26 +131,35 @@ export function createInitialState(initialProject: VideoProject = demoProject): 
 }
 
 export function pushHistory(state: EditorState, newProject: VideoProject): EditorState {
-  const newTimeline = buildTimeline(newProject);
-  const reconciled = reconcileTimelineState(
-    state.currentFrame,
-    state.selectedClipId,
-    newProject,
-    newTimeline
-  );
+  try {
+    validateLockedContent(state.project, newProject);
+    const newTimeline = buildTimeline(newProject);
+    const reconciled = reconcileTimelineState(
+      state.currentFrame,
+      state.selectedClipId,
+      newProject,
+      newTimeline
+    );
 
-  return {
-    ...state,
-    project: newProject,
-    timeline: newTimeline,
-    currentFrame: reconciled.currentFrame,
-    selectedClipId: reconciled.selectedClipId,
-    revision: state.revision + 1,
-    saveStatus: 'dirty',
-    saveError: null,
-    historyPast: [...state.historyPast.slice(-19), state.project], // keep max 20 history states
-    historyFuture: [],
-  };
+    return {
+      ...state,
+      project: newProject,
+      timeline: newTimeline,
+      currentFrame: reconciled.currentFrame,
+      selectedClipId: reconciled.selectedClipId,
+      revision: state.revision + 1,
+      saveStatus: 'dirty',
+      saveError: null,
+      editError: null,
+      historyPast: [...state.historyPast.slice(-19), state.project], // keep max 20 history states
+      historyFuture: [],
+    };
+  } catch (err) {
+    return {
+      ...state,
+      editError: err instanceof Error ? err.message : String(err),
+    };
+  }
 }
 
 export function editorReducer(state: EditorState, action: EditorAction): EditorState {
@@ -243,9 +255,13 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     case 'SET_EXPORT_MODAL':
       return { ...state, isExportModalOpen: action.open };
 
+    case 'CLEAR_EDIT_ERROR':
+      return { ...state, editError: null };
+
     case 'ADD_SCENE': {
       const newScenes = [...state.project.scenes, action.scene];
       const nextState = pushHistory(state, { ...state.project, scenes: newScenes });
+      if (nextState.project === state.project) return nextState;
       return { ...nextState, selectedClipId: action.scene.id };
     }
 
@@ -271,12 +287,40 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
 
       // Only split if at least 5 frames from start and end
       if (offsetInScene <= 5 || offsetInScene >= computedScene.durationInFrames - 5) {
-        return state;
+        return {
+          ...state,
+          editError: 'Điểm chia phải cách đầu và cuối scene ít nhất 5 frames.',
+        };
       }
 
       const originalScene = state.project.scenes[sceneIndex];
+
+      // Validate against incoming crossfade duration
+      const incomingCrossfade =
+        computedScene.incomingTransition?.type === 'crossfade'
+          ? computedScene.incomingTransition.durationInFrames
+          : 0;
+      if (offsetInScene <= incomingCrossfade) {
+        return {
+          ...state,
+          editError: `Không thể chia scene ở frame ${offsetInScene}: vi phạm incoming crossfade (${incomingCrossfade} frames).`,
+        };
+      }
+
+      // Validate against outgoing transition duration
+      const outgoingTransition = originalScene.transition
+        ? originalScene.transition.durationInFrames
+        : 0;
+      if (originalScene.durationInFrames - offsetInScene <= outgoingTransition) {
+        return {
+          ...state,
+          editError: `Không thể chia scene: phần sau quá ngắn so với outgoing transition (${outgoingTransition} frames).`,
+        };
+      }
+
       const scenePart1: SceneConfig = {
         ...originalScene,
+        transition: undefined, // First half has no outgoing transition (Finding I4)
         durationInFrames: offsetInScene,
       };
 
@@ -291,6 +335,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         ...originalScene,
         id: newId,
         durationInFrames: originalScene.durationInFrames - offsetInScene,
+        transition: originalScene.transition, // Second half retains original outgoing transition
         ...(originalScene.type === 'video'
           ? {
               startFromFrame: (originalScene.startFromFrame ?? 0) + consumedSourceFrames,
@@ -306,6 +351,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       ];
 
       const nextState = pushHistory(state, { ...state.project, scenes: newScenes });
+      if (nextState.project === state.project) return nextState;
       return {
         ...nextState,
         selectedClipId: scenePart2.id,
@@ -330,6 +376,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       ];
 
       const nextState = pushHistory(state, { ...state.project, scenes: newScenes });
+      if (nextState.project === state.project) return nextState;
       return { ...nextState, selectedClipId: newId };
     }
 
@@ -361,7 +408,26 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
           ...action.setting,
         },
       };
-      return pushHistory(state, { ...state.project, trackSettings: updated });
+      const candidateProject = { ...state.project, trackSettings: updated };
+      try {
+        const newTimeline = buildTimeline(candidateProject);
+        return {
+          ...state,
+          project: candidateProject,
+          timeline: newTimeline,
+          revision: state.revision + 1,
+          saveStatus: 'dirty',
+          saveError: null,
+          editError: null,
+          historyPast: [...state.historyPast.slice(-19), state.project],
+          historyFuture: [],
+        };
+      } catch (err) {
+        return {
+          ...state,
+          editError: err instanceof Error ? err.message : String(err),
+        };
+      }
     }
 
     case 'SET_SUBTITLES': {
@@ -373,28 +439,36 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     }
 
     case 'LOAD_PROJECT': {
-      const timeline = buildTimeline(action.project);
-      const reconciled = reconcileTimelineState(
-        state.currentFrame,
-        state.selectedClipId,
-        action.project,
-        timeline
-      );
-      return {
-        ...state,
-        project: action.project,
-        timeline,
-        currentFrame: reconciled.currentFrame,
-        selectedClipId: reconciled.selectedClipId,
-        revision: action.revision ?? state.revision + 1,
-        saveStatus: 'saved',
-        saveError: null,
-        lastSavedAt: Date.now(),
-        historyPast: [],
-        historyFuture: [],
-        assistantEpoch: null,
-        assistantApplyError: null,
-      };
+      try {
+        const timeline = buildTimeline(action.project);
+        const reconciled = reconcileTimelineState(
+          state.currentFrame,
+          state.selectedClipId,
+          action.project,
+          timeline
+        );
+        return {
+          ...state,
+          project: action.project,
+          timeline,
+          currentFrame: reconciled.currentFrame,
+          selectedClipId: reconciled.selectedClipId,
+          revision: action.revision ?? state.revision + 1,
+          saveStatus: action.revision === undefined ? 'dirty' : 'saved',
+          saveError: null,
+          editError: null,
+          lastSavedAt: Date.now(),
+          historyPast: [],
+          historyFuture: [],
+          assistantEpoch: null,
+          assistantApplyError: null,
+        };
+      } catch (err) {
+        return {
+          ...state,
+          editError: err instanceof Error ? err.message : 'Invalid project timeline',
+        };
+      }
     }
 
     case 'RESET_PROJECT': {
@@ -403,6 +477,14 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     }
 
     case 'SET_SAVE_STATUS': {
+      // If setting to 'saved' but state.revision has advanced past the revision that was saved, preserve 'dirty'!
+      if (action.status === 'saved' && action.revision !== undefined && state.revision > action.revision) {
+        return {
+          ...state,
+          saveError: null,
+          lastSavedAt: action.savedAt ?? Date.now(),
+        };
+      }
       return {
         ...state,
         saveStatus: action.status,

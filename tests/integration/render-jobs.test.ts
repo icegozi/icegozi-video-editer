@@ -82,4 +82,24 @@ describe('Render Service & Job Lifecycle (Finding I1)', () => {
       renderService.createJob(invalidProject as any, RenderProfile.Preview);
     }).toThrow();
   });
+
+  it('rejects invalid render profile before side effects leaving 0 orphan jobs or snapshots (Finding I10 / T14)', () => {
+    const jobsBefore = renderService.listJobs().length;
+
+    expect(() => {
+      renderService.createJob(customProject, 'typo' as any);
+    }).toThrow(/Invalid render profile/);
+
+    expect(() => {
+      renderService.createJob(customProject, null as any);
+    }).toThrow(/Invalid render profile/);
+
+    expect(() => {
+      renderService.createJob(customProject, {} as any);
+    }).toThrow(/Invalid render profile/);
+
+    // Verify 0 orphan jobs were created in database or active list
+    const jobsAfter = renderService.listJobs().length;
+    expect(jobsAfter).toBe(jobsBefore);
+  });
 });

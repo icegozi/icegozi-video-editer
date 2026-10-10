@@ -84,7 +84,10 @@ export const LeftWorkspace: React.FC = () => {
 
       {/* Tab Content Viewport */}
       <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-        {activeTab === 'ai' ? <AiChatPanel /> : <AssetPanel />}
+        <div style={{ height: '100%', display: activeTab === 'ai' ? 'block' : 'none' }}>
+          <AiChatPanel />
+        </div>
+        {activeTab !== 'ai' && <AssetPanel />}
       </div>
     </div>
   );

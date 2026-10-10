@@ -26,17 +26,45 @@ export function projectAssets(project: VideoProject): string[] {
   ])];
 }
 
+import { getSceneTrackId } from '../../domain/video/trackUtils';
+
+export function validateLockedContent(base: VideoProject, candidate: VideoProject): void {
+  const settings = base.trackSettings ?? {};
+  const anyLocked = Object.values(settings).some((s) => s.locked);
+  if (anyLocked && (base.fps !== candidate.fps || base.width !== candidate.width || base.height !== candidate.height)) {
+    throw new Error('Không được đổi canvas/fps khi có track khóa.');
+  }
+
+  const baseTimeline = buildTimeline(base);
+  const nextTimeline = buildTimeline(candidate);
+
+  for (const track of ['V1', 'V2'] as const) {
+    if (!settings[track]?.locked) continue;
+    const baseScenesOnTrack = baseTimeline.computedScenes.filter(
+      ({ scene }) => getSceneTrackId(scene, base.scenes) === track
+    );
+    const candidateScenesOnTrack = nextTimeline.computedScenes.filter(
+      ({ scene }) => getSceneTrackId(scene, candidate.scenes) === track
+    );
+    if (canonical(baseScenesOnTrack) !== canonical(candidateScenesOnTrack)) {
+      throw new Error(`Track ${track} đang khóa.`);
+    }
+  }
+
+  for (const audio of base.audioTracks ?? []) {
+    if (settings[audio.id]?.locked && canonical(audio) !== canonical(candidate.audioTracks?.find((t) => t.id === audio.id))) {
+      throw new Error(`Audio track "${audio.id}" đang khóa.`);
+    }
+  }
+
+  if (settings.subtitles?.locked && canonical(base.subtitles) !== canonical(candidate.subtitles)) {
+    throw new Error('Subtitle track đang khóa.');
+  }
+}
+
 export function validateCandidate(base: VideoProject, raw: unknown): ReturnType<typeof VideoProjectSchema.parse> {
   const candidate = VideoProjectSchema.parse(raw);
-  candidate.scenes.forEach((scene, index) => {
-    const next = candidate.scenes[index + 1];
-    if (next && scene.transition?.type === 'crossfade' && scene.transition.durationInFrames >= next.durationInFrames) {
-      throw new Error('Crossfade phải ngắn hơn cả hai scene để tránh chồng ba clip hoặc cắt nội dung.');
-    }
-  });
   if (candidate.id !== base.id) throw new Error('Proposal phải thuộc project đang mở.');
-  const ids = [...candidate.scenes, ...(candidate.audioTracks ?? []), ...(candidate.subtitles ?? [])].map((v) => v.id);
-  if (new Set(ids).size !== ids.length) throw new Error('ID scene/audio/subtitle phải duy nhất.');
   if (canonical(base.metadata) !== canonical(candidate.metadata)) throw new Error('AI không được thay metadata tùy ý.');
   const assets = new Set(projectAssets(base));
   if (projectAssets(candidate).some((src) => !assets.has(src))) throw new Error('Thiếu media: chỉ được dùng asset của snapshot.');
@@ -46,30 +74,7 @@ export function validateCandidate(base: VideoProject, raw: unknown): ReturnType<
       throw new Error('Không được thay đổi track đang khóa.');
     }
   }
-  const anyLocked = Object.values(settings).some((s) => s.locked);
-  if (anyLocked && (base.fps !== candidate.fps || base.width !== candidate.width || base.height !== candidate.height)) {
-    throw new Error('Không được đổi canvas/fps khi có track khóa.');
-  }
-  const baseTimeline = buildTimeline(base);
-  const nextTimeline = buildTimeline(candidate);
-  const hasPrimary = base.scenes.some((s) => s.type !== 'text' && s.type !== 'formula');
-  const nextHasPrimary = candidate.scenes.some((s) => s.type !== 'text' && s.type !== 'formula');
-  for (const track of ['V1', 'V2']) {
-    if (!settings[track]?.locked) continue;
-    const entries = (timeline: typeof baseTimeline, primary: boolean) => timeline.computedScenes.filter(({ scene }) => {
-      const overlay = scene.type === 'text' || scene.type === 'formula';
-      return track === 'V1' ? !primary || !overlay : primary && overlay;
-    });
-    if (canonical(entries(baseTimeline, hasPrimary)) !== canonical(entries(nextTimeline, nextHasPrimary))) {
-      throw new Error(`Track ${track} đang khóa.`);
-    }
-  }
-  for (const audio of base.audioTracks ?? []) {
-    if (settings[audio.id]?.locked && canonical(audio) !== canonical(candidate.audioTracks?.find((t) => t.id === audio.id))) {
-      throw new Error('Audio track đang khóa.');
-    }
-  }
-  if (settings.subtitles?.locked && canonical(base.subtitles) !== canonical(candidate.subtitles)) throw new Error('Subtitle track đang khóa.');
+  validateLockedContent(base, candidate);
   return candidate;
 }
 

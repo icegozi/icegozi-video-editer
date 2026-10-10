@@ -151,4 +151,211 @@ describe('Editor Store & Reducer Invariants (Findings I2, I3)', () => {
     expect(state.project.scenes).toHaveLength(1);
     expect(state.selectedClipId).toBe('s1');
   });
+
+  describe('C2: Manual edits validation transactions and error state (T3)', () => {
+    it('rejects duration update when transition equals scene duration without crash', () => {
+      const projectWithFade: VideoProject = {
+        ...sampleVideoProject,
+        scenes: [
+          {
+            id: 'scene-fade',
+            type: 'text',
+            durationInFrames: 120,
+            title: 'Fade Scene',
+            transition: { type: 'fade', durationInFrames: 15 },
+          },
+        ],
+      };
+
+      const initialState = createInitialState(projectWithFade);
+      const revBefore = initialState.revision;
+
+      // Attempt to update duration to 15 (which equals fade transition 15)
+      const nextState = editorReducer(initialState, {
+        type: 'UPDATE_SCENE',
+        sceneId: 'scene-fade',
+        updates: { durationInFrames: 15 },
+      });
+
+      // Must not throw or crash; must retain state and revision
+      expect(nextState.project).toEqual(initialState.project);
+      expect(nextState.revision).toBe(revBefore);
+      expect(nextState.editError).toBeTruthy();
+    });
+
+    it('rejects split too close to transition boundary without crashing', () => {
+      const projectWithTransition: VideoProject = {
+        ...sampleVideoProject,
+        scenes: [
+          {
+            id: 'scene-1',
+            type: 'text',
+            title: 'Scene 1',
+            durationInFrames: 60,
+            transition: { type: 'crossfade', durationInFrames: 15 },
+          },
+          {
+            id: 'scene-2',
+            type: 'text',
+            title: 'Scene 2',
+            durationInFrames: 60,
+          },
+        ],
+      };
+
+      const state = createInitialState(projectWithTransition);
+      // Split at frame 50 (within 10 frames of 60, where outgoing transition is 15f)
+      const nextState = editorReducer(state, {
+        type: 'SPLIT_SCENE',
+        sceneId: 'scene-1',
+        atFrame: 50,
+      });
+
+      expect(nextState.editError).toMatch(/quá ngắn so với outgoing transition/);
+      expect(nextState.project.scenes).toHaveLength(2);
+    });
+
+    it('LOAD_PROJECT gracefully rejects invalid timeline without white-screening', () => {
+      const state = createInitialState(sampleVideoProject);
+      const invalidProject: VideoProject = {
+        ...sampleVideoProject,
+        scenes: [
+          {
+            id: 's1',
+            type: 'text',
+            title: 'S1',
+            durationInFrames: 100,
+            transition: { type: 'crossfade', durationInFrames: 80 },
+          },
+          {
+            id: 's2',
+            type: 'text',
+            title: 'S2',
+            durationInFrames: 30, // 80 > 30!
+          },
+        ],
+      };
+
+      const nextState = editorReducer(state, {
+        type: 'LOAD_PROJECT',
+        project: invalidProject,
+      });
+
+      // Must retain current state with error message, not white screen
+      expect(nextState.project.id).toBe(sampleVideoProject.id);
+      expect(nextState.editError).toBeTruthy();
+    });
+  });
+
+  describe('I4: Split scene transition semantics (T8)', () => {
+    it('preserves outgoing crossfade only on second half and maintains exact timeline duration', () => {
+      const crossfadeProject: VideoProject = {
+        ...sampleVideoProject,
+        scenes: [
+          {
+            id: 'scene-a',
+            type: 'text',
+            durationInFrames: 120,
+            title: 'Scene A',
+            transition: { type: 'crossfade', durationInFrames: 15 },
+          },
+          {
+            id: 'scene-b',
+            type: 'text',
+            durationInFrames: 120,
+            title: 'Scene B',
+          },
+        ],
+      };
+
+      // Before split: 120 + 120 - 15 = 225 frames
+      const state = createInitialState(crossfadeProject);
+      expect(state.timeline.totalDurationInFrames).toBe(225);
+
+      // Split scene-a at 60 frames
+      const splitState = editorReducer(state, {
+        type: 'SPLIT_SCENE',
+        sceneId: 'scene-a',
+        atFrame: 60,
+        newSceneId: 'scene-a-part2',
+      });
+
+      expect(splitState.project.scenes).toHaveLength(3);
+      const [part1, part2, sceneB] = splitState.project.scenes;
+
+      // Part 1: duration = 60, NO outgoing transition!
+      expect(part1.durationInFrames).toBe(60);
+      expect(part1.transition).toBeUndefined();
+
+      // Part 2: duration = 60, retains original outgoing crossfade (15 frames)
+      expect(part2.durationInFrames).toBe(60);
+      expect(part2.transition).toEqual({ type: 'crossfade', durationInFrames: 15 });
+
+      // Total timeline duration must remain EXACTLY 225 frames!
+      // 60 (part1) + 60 (part2) - 15 (crossfade) + 120 (sceneB) = 225 frames
+      expect(splitState.timeline.totalDurationInFrames).toBe(225);
+    });
+  });
+
+  describe('I6: Track locking prevents manual mutations (T10)', () => {
+    it('blocks UPDATE, DELETE, SPLIT on locked tracks and allows edits after unlocking', () => {
+      const lockedProject: VideoProject = {
+        ...sampleVideoProject,
+        trackSettings: {
+          V1: { locked: true, hidden: false },
+        },
+        scenes: [
+          { id: 's1', type: 'text', durationInFrames: 60, title: 'Scene 1' },
+          { id: 's2', type: 'text', durationInFrames: 60, title: 'Scene 2' },
+        ],
+      };
+
+      let state = createInitialState(lockedProject);
+      const revBefore = state.revision;
+
+      // 1. UPDATE on locked scene: rejected!
+      state = editorReducer(state, {
+        type: 'UPDATE_SCENE',
+        sceneId: 's1',
+        updates: { title: 'Modified Scene 1' },
+      });
+      expect(state.editError).toMatch(/track.*đang khóa/i);
+      expect((state.project.scenes[0] as any).title).toBe('Scene 1');
+      expect(state.revision).toBe(revBefore);
+
+      // 2. DELETE on locked scene: rejected!
+      state = editorReducer(state, {
+        type: 'DELETE_SCENE',
+        sceneId: 's1',
+      });
+      expect(state.editError).toMatch(/track.*đang khóa/i);
+      expect(state.project.scenes).toHaveLength(2);
+
+      // 3. SPLIT on locked scene: rejected!
+      state = editorReducer(state, {
+        type: 'SPLIT_SCENE',
+        sceneId: 's1',
+        atFrame: 30,
+      });
+      expect(state.editError).toMatch(/track.*đang khóa/i);
+      expect(state.project.scenes).toHaveLength(2);
+
+      // 4. Unlock track V1
+      state = editorReducer(state, {
+        type: 'SET_TRACK_SETTING',
+        trackId: 'V1',
+        setting: { locked: false },
+      });
+      expect(state.project.trackSettings?.V1?.locked).toBe(false);
+
+      // 5. UPDATE now succeeds!
+      state = editorReducer(state, {
+        type: 'UPDATE_SCENE',
+        sceneId: 's1',
+        updates: { title: 'Successfully Updated' },
+      });
+      expect((state.project.scenes[0] as any).title).toBe('Successfully Updated');
+      expect(state.editError).toBeNull();
+    });
+  });
 });
